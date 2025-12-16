@@ -1,0 +1,21 @@
+body {
+  font-family: sans-serif;
+  background: #f4f4f4;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  width: 300px;
+  margin: 100px auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td, th {
+  border: 1px solid #ccc;
+  padding: 8px;
+}
