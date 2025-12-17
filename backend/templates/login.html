@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-4">
+        <div class="card p-4">
+            <h3 class="text-center mb-4">Вход в кабинет</h3>
+            {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
+            <form method="post" action="/web/login">
+                <div class="mb-3">
+                    <label class="form-label">Ваш персональный токен</label>
+                    <input type="text" name="token" class="form-control" placeholder="Введите токен..." required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Войти</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

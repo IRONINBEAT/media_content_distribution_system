@@ -27,7 +27,7 @@ class File(Base):
     
     id = Column(Integer, primary_key=True)
     file_id = Column(String, unique=True)  
-    url = Column(String)  
+    url = Column(String)
     description = Column(String)
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="files")
