@@ -1,34 +1,35 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi import UploadFile, File as FastAPIFile, Form
-from fastapi.responses import FileResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.requests import Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.security.utils import get_authorization_scheme_param
-import typing
-from sqlalchemy.orm import Session
-from typing import List
-from database import SessionLocal
-from models import User, Device, File
-from pydantic import BaseModel
-import uuid
-import shutil
 import os
+import shutil
+import uuid
+from typing import List
+
+from fastapi import (
+    Depends,
+    FastAPI,
+    File as FastAPIFile,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+)
+from fastapi.responses import FileResponse
+from fastapi.security.utils import get_authorization_scheme_param
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from database import SessionLocal, get_db
+from models import Device, File, User
+from web_routes import router as web_router
 
 UPLOAD_DIR = "uploads/videos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(title="Media-Content Distribution System API")
 
+app.include_router(web_router, include_in_schema=False)
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ============== Schemas ==============
 
@@ -36,6 +37,7 @@ def get_db():
 class NewDeviceRequest(BaseModel):
     token: str
     id: str  # уникальный ID устройства
+    description: str
 
 
 class CheckVideosRequest(BaseModel):
@@ -174,17 +176,14 @@ def delete_file(file_id: str, db: Session = Depends(get_db)):
         except OSError as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to delete file from disk: {str(e)}"
+                detail=f"Failed to delete file from disk: {str(e)}",
             )
 
     # 3. Удаляем запись из БД
     db.delete(file)
     db.commit()
 
-    return {
-        "result": "deleted",
-        "file_id": file.file_id
-    }
+    return {"result": "deleted", "file_id": file.file_id}
 
 
 @app.post("/api/admin/files/upload")
@@ -244,11 +243,14 @@ def add_device(data: NewDeviceRequest, db: Session = Depends(get_db)):
     )
 
     if existing_device:
-        return {"success": False, "message": f"deviceID уже существует"}
+        return {"success": False, "message": f"такой deviceID уже существует"}
 
     # Добавляем новое устройство со статусом "unverified"
     new_device = Device(
-        device_id=data.id, description="", status="unverified", user_id=user.id
+        device_id=data.id,
+        description=data.description,
+        status="unverified",
+        user_id=user.id,
     )
     db.add(new_device)
     db.commit()
@@ -277,7 +279,10 @@ def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
         return {"success": False, "message": "Неизвестное устройство"}
 
     if device.status != "active":
-        return {"success": False, "message": "Устройство не активно"}
+        return {
+            "success": False,
+            "message": "Устройство не активировано или заблокировано",
+        }
 
     # Получаем список видео пользователя
     server_files = db.query(File).filter(File.user_id == user.id).all()
@@ -345,165 +350,4 @@ def download_file(
         path=file_path,
         media_type="application/octet-stream",
         filename=os.path.basename(file_path),
-    )
-
-
-# ============== WEB UI LOGIC ==============
-
-templates = Jinja2Templates(directory="templates")
-
-@app.get("/web/login", response_class=HTMLResponse)
-def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.post("/web/login")
-def login_submit(request: Request, token: str = Form(...), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.token == token).first()
-    if not user:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Неверный токен"})
-    
-    response = RedirectResponse(url="/web/dashboard", status_code=303)
-    response.set_cookie(key="user_token", value=token)
-    return response
-
-@app.get("/web/logout")
-def logout():
-    response = RedirectResponse(url="/web/login")
-    response.delete_cookie("user_token")
-    return response
-
-# Зависимость для получения текущего пользователя из Cookie
-def get_current_web_user(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("user_token")
-    if not token:
-        return None
-    user = db.query(User).filter(User.token == token).first()
-    return user
-
-@app.get("/web/dashboard", response_class=HTMLResponse)
-def dashboard(
-    request: Request, 
-    user: User = Depends(get_current_web_user), 
-    db: Session = Depends(get_db)
-):
-    if not user:
-        return RedirectResponse(url="/web/login")
-    
-    # Загружаем данные только для ЭТОГО пользователя
-    devices = db.query(Device).filter(Device.user_id == user.id).all()
-    files = db.query(File).filter(File.user_id == user.id).all()
-    
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user": user,
-        "devices": devices,
-        "files": files
-    })
-
-@app.post("/web/device/action")
-def device_action(
-    request: Request,
-    device_id: int = Form(...),
-    action: str = Form(...),
-    user: User = Depends(get_current_web_user),
-    db: Session = Depends(get_db)
-):
-    if not user:
-        return RedirectResponse(url="/web/login", status_code=303)
-    
-    device = db.query(Device).filter(Device.id == device_id, Device.user_id == user.id).first()
-    if device:
-        if action == "activate":
-            device.status = "active"
-        elif action == "block":
-            device.status = "blocked"
-        elif action == "delete":
-            db.delete(device)
-        
-        db.commit()
-    
-    return RedirectResponse(url="/web/dashboard", status_code=303)
-
-@app.post("/web/file/delete")
-def web_delete_file(
-    file_id: str = Form(...),
-    user: User = Depends(get_current_web_user),
-    db: Session = Depends(get_db)
-):
-    if not user:
-        return RedirectResponse(url="/web/login", status_code=303)
-
-    # Используем уже существующую логику удаления, но адаптируем под Web
-    # Прямой вызов логики из delete_file_endpoint был бы сложен из-за Depends, 
-    # поэтому дублируем логику очистки (или выносим в сервисный слой в идеале)
-    
-    file = db.query(File).filter(File.file_id == file_id, File.user_id == user.id).first()
-    if file:
-        if file.url and os.path.exists(file.url):
-            try:
-                os.remove(file.url)
-            except:
-                pass # Логируем ошибку в реальном приложении
-        db.delete(file)
-        db.commit()
-
-    return RedirectResponse(url="/web/dashboard", status_code=303)
-
-@app.post("/web/file/upload")
-def web_upload_file(
-    description: str = Form(...),
-    file: UploadFile = FastAPIFile(...),
-    user: User = Depends(get_current_web_user),
-    db: Session = Depends(get_db)
-):
-    if not user:
-        return RedirectResponse(url="/web/login", status_code=303)
-    
-    # Логика загрузки (аналогична существующему API, но привязана к Web User)
-    file_id = uuid.uuid4().hex
-    filename = f"{file_id}_{file.filename}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    db_file = File(
-        file_id=file_id,
-        url=file_path,
-        description=description,
-        user_id=user.id,
-    )
-
-    db.add(db_file)
-    db.commit()
-    
-    return RedirectResponse(url="/web/dashboard", status_code=303)
-
-@app.get("/web/stream/{file_id}")
-def stream_video(
-    file_id: str,
-    user: User = Depends(get_current_web_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Специальный эндпоинт для просмотра видео в браузере админа.
-    Использует авторизацию через Cookie.
-    """
-    if not user:
-        # Если сессия истекла, вернем 403, видео не загрузится
-        raise HTTPException(status_code=403, detail="Not authenticated")
-
-    # Ищем файл, принадлежащий этому админу
-    file = db.query(File).filter(File.file_id == file_id, File.user_id == user.id).first()
-    
-    if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    if not os.path.exists(file.url):
-        raise HTTPException(status_code=404, detail="File missing on disk")
-
-    return FileResponse(
-        path=file.url,
-        media_type="video/mp4",
-        filename=os.path.basename(file.url)
     )

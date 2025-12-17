@@ -67,7 +67,7 @@
                     <video src="/web/stream/{{ file.file_id }}" class="card-img-top" controls style="height: 180px; object-fit: cover; background: #000;"></video>
                     <div class="card-body">
                         <h6 class="card-title text-truncate" title="{{ file.description }}">{{ file.description or "Без описания" }}</h6>
-                        <small class="text-muted d-block mb-2">{{ file.file_id }}</small>
+                        <small class="text-muted d-block mb-2">file_id: {{ file.file_id }}</small>
                         
                         <form method="post" action="/web/file/delete">
                             <input type="hidden" name="file_id" value="{{ file.file_id }}">
