@@ -12,7 +12,7 @@ user = User(
 )
 
 device = Device(
-    device_id="0325a6d6c4ce407289aaffcb37fdfa85", 
+    device_id="0325a6d6c4ce407289aaffcb37fdfa85",
     description="Orange Pi в холле",
     status="active",
     user=user

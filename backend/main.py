@@ -9,16 +9,14 @@ from fastapi import (
     File as FastAPIFile,
     Form,
     HTTPException,
-    Request,
     UploadFile,
 )
 from fastapi.responses import FileResponse
-from fastapi.security.utils import get_authorization_scheme_param
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import SessionLocal, get_db
+from database import get_db
 from models import Device, File, User
 from web_routes import router as web_router
 
@@ -36,7 +34,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class NewDeviceRequest(BaseModel):
     token: str
-    id: str  # уникальный ID устройства
+    id: str  # уникальный ID устройства
     description: str
 
 
@@ -76,7 +74,10 @@ class FileCreate(BaseModel):
 @app.get("/")
 def greetings():
     return {
-        "message": "Добро пожаловать в API системы распространения мультимедийного контента!"
+        "message": (
+            "Добро пожаловать в API системы распространения "
+            "мультимедийного контента!"
+        )
     }
 
 
@@ -163,21 +164,21 @@ def create_file(data: FileCreate, db: Session = Depends(get_db)):
 
 @app.delete("/api/admin/files/{file_id}")
 def delete_file(file_id: str, db: Session = Depends(get_db)):
-    # 1. Ищем файл в БД по file_id
+    # 1. Ищем файл в БД по file_id
     file = db.query(File).filter(File.file_id == file_id).first()
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # 2. Удаляем файл с диска
+    # 2. Удаляем файл с диска
     file_path = file.url
     if file_path and os.path.exists(file_path):
         try:
             os.remove(file_path)
-        except OSError as e:
+        except OSError as exc:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to delete file from disk: {str(e)}",
-            )
+                detail=f"Failed to delete file from disk: {exc}",
+            ) from exc
 
     # 3. Удаляем запись из БД
     db.delete(file)
@@ -228,14 +229,14 @@ def upload_file(
 @app.post("/newdevice")
 def add_device(data: NewDeviceRequest, db: Session = Depends(get_db)):
     """
-    Добавление устройства в личный кабинет
+    Добавление устройства в личный кабинет
     """
     # Проверяем пользователя по токену
     user = db.query(User).filter(User.token == data.token).first()
     if not user:
         return {"success": False, "message": "Invalid token"}
 
-    # Проверяем наличие устройства с таким ID в кабинете
+    # Проверяем наличие устройства с таким ID в кабинете
     existing_device = (
         db.query(Device)
         .filter(Device.device_id == data.id, Device.user_id == user.id)
@@ -243,9 +244,12 @@ def add_device(data: NewDeviceRequest, db: Session = Depends(get_db)):
     )
 
     if existing_device:
-        return {"success": False, "message": f"такой deviceID уже существует"}
+        return {
+            "success": False,
+            "message": "такой deviceID уже существует",
+        }
 
-    # Добавляем новое устройство со статусом "unverified"
+    # Добавляем новое устройство со статусом "unverified"
     new_device = Device(
         device_id=data.id,
         description=data.description,
@@ -261,14 +265,14 @@ def add_device(data: NewDeviceRequest, db: Session = Depends(get_db)):
 @app.post("/check-videos")
 def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
     """
-    Проверка актуальности списка видео на устройстве
+    Проверка актуальности списка видео на устройстве
     """
     # Проверяем пользователя по токену
     user = db.query(User).filter(User.token == data.token).first()
     if not user:
         return {"success": False, "message": "Invalid token"}
 
-    # Проверяем наличие и статус устройства
+    # Проверяем наличие и статус устройства
     device = (
         db.query(Device)
         .filter(Device.device_id == data.id, Device.user_id == user.id)
@@ -276,25 +280,31 @@ def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
     )
 
     if not device:
-        return {"success": False, "message": "Неизвестное устройство"}
+        return {"success": False, "message": "Неизвестное устройство"}
 
     if device.status != "active":
         return {
             "success": False,
-            "message": "Устройство не активировано или заблокировано",
+            "message": "Устройство не активировано или заблокировано",
         }
 
     # Получаем список видео пользователя
     server_files = db.query(File).filter(File.user_id == user.id).all()
-    server_file_ids = {f.file_id for f in server_files}
+    server_file_ids = {file.file_id for file in server_files}
     client_file_ids = set(data.videos)
 
     # Сравниваем списки
     if server_file_ids == client_file_ids:
-        return {"success": True, "actual": True, "message": "Список актуален"}
+        return {
+            "success": True,
+            "actual": True,
+            "message": "Список актуален",
+        }
 
-    # Формируем актуальный список видео
-    videos_response = [{"id": f.file_id, "url": f.url} for f in server_files]
+    # Формируем актуальный список видео
+    videos_response = [
+        {"id": file.file_id, "url": file.url} for file in server_files
+    ]
 
     return {
         "success": True,
@@ -306,10 +316,13 @@ def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
 
 @app.get("/download/{file_id}")
 def download_file(
-    file_id: str, token: str, id: str, db: Session = Depends(get_db)
+    file_id: str,
+    token: str,
+    id: str,
+    db: Session = Depends(get_db),
 ):
     """
-    Скачивание медиафайла устройством
+    Скачивание медиафайла устройством
     """
 
     # 1. Проверяем пользователя
@@ -317,7 +330,7 @@ def download_file(
     if not user:
         raise HTTPException(status_code=403, detail="Invalid token")
 
-    # 2. Проверяем устройство
+    # 2. Проверяем устройство
     device = (
         db.query(Device)
         .filter(Device.device_id == id, Device.user_id == user.id)
@@ -330,7 +343,7 @@ def download_file(
     if device.status != "active":
         raise HTTPException(status_code=403, detail="Device not active")
 
-    # 3. Проверяем файл
+    # 3. Проверяем файл
     file = (
         db.query(File)
         .filter(File.file_id == file_id, File.user_id == user.id)
@@ -340,12 +353,12 @@ def download_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # 4. Проверяем существование файла на диске
+    # 4. Проверяем существование файла на диске
     file_path = file.url
     if not os.path.exists(file_path):
         raise HTTPException(status_code=500, detail="File missing on server")
 
-    # 5. Отдаём файл
+    # 5. Отдаём файл
     return FileResponse(
         path=file_path,
         media_type="application/octet-stream",
