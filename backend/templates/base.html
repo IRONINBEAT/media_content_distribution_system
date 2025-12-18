@@ -9,12 +9,22 @@
     <style>
         body { background-color: #f8f9fa; }
         .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
+        .navbar-brand { display: flex; align-items: center; }
+        .brand-icon { 
+            width: 24px; 
+            height: 24px; 
+            margin-right: 10px;
+            filter: brightness(0) invert(1);
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="/web/dashboard">Система распространения медиаконтента</a>
+            <a class="navbar-brand" href="/web/dashboard">
+                <img src="/static/favicon.png" alt="Иконка" class="brand-icon">
+                Система распространения медиаконтента
+            </a>
             {% if user %}
             <div class="d-flex">
                 <span class="navbar-text me-3">{{ user.full_name }}</span>

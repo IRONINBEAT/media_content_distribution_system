@@ -1,6 +1,8 @@
 import os
 import shutil
 import uuid
+import secrets
+from datetime import datetime
 
 from fastapi import (
     APIRouter,
@@ -21,7 +23,7 @@ from models import Device, File, User
 router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
-UPLOAD_DIR = "uploads/videos"  # Дублируем или выносим в config.py
+UPLOAD_DIR = "uploads/videos"
 
 
 def get_current_web_user(request: Request, db: Session = Depends(get_db)):
@@ -161,7 +163,6 @@ def web_delete_file(
             try:
                 os.remove(file.url)
             except OSError:
-                # Можно залогировать ошибку, если нужен лог
                 pass
         db.delete(file)
         db.commit()
@@ -192,3 +193,24 @@ def stream_video(
         media_type="video/mp4",
         filename=os.path.basename(file.url),
     )
+
+
+@router.post("/web/user/refresh-token")
+def refresh_user_token(user: User = Depends(get_current_web_user),
+                       db: Session = Depends(get_db)):
+    if not user:
+        return RedirectResponse(url="/web/login", status_code=303)
+
+    # Сохраняем историю
+    user.old_token = user.token
+    user.token_changed_at = datetime.utcnow()
+
+    # Генерируем новый
+    new_token = secrets.token_urlsafe(48)
+    user.token = new_token
+
+    db.commit()
+
+    response = RedirectResponse(url="/web/dashboard", status_code=303)
+    response.set_cookie(key="user_token", value=new_token)
+    return response

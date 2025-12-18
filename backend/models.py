@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -11,6 +11,8 @@ class User(Base):
     full_name = Column(String)
     username = Column(String, unique=True)
     token = Column(String, unique=True)
+    old_token = Column(String, nullable=True)
+    token_changed_at = Column(DateTime, nullable=True)
     devices = relationship("Device", back_populates="user")
     files = relationship("File", back_populates="user")
 

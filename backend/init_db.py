@@ -8,7 +8,9 @@ db = SessionLocal()
 user = User(
     full_name="Иванов Иван Иванович",
     username="admin",
-    token="c!k<!&UDFzv)DEo?%2iqG9zzTQr@(+ITYcl)Lfs!j7ND#j(T97Wgh)N00x1MuiJF"
+    token="c!k<!&UDFzv)DEo?%2iqG9zzTQr@(+ITYcl)Lfs!j7ND#j(T97Wgh)N00x1MuiJF",
+    old_token=None,
+    token_changed_at=None
 )
 
 device = Device(
