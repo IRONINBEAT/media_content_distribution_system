@@ -10,8 +10,12 @@
             {% endif %}
             <form method="post" action="/web/login">
                 <div class="mb-3">
-                    <label class="form-label">Ваш персональный токен</label>
-                    <input type="text" name="token" class="form-control" placeholder="Введите токен..." required>
+                    <label class="form-label">Имя пользователя (логин)</label>
+                    <input type="text" name="username" class="form-control" placeholder="Введите логин..." required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" name="password" class="form-control" placeholder="Введите пароль..." required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Войти</button>
             </form>

@@ -1,13 +1,18 @@
 from database import Base, engine, SessionLocal
 from models import User, Device, File
+from passlib.context import CryptContext
 
 Base.metadata.create_all(bind=engine)
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 db = SessionLocal()
 
 user = User(
     full_name="Иванов Иван Иванович",
     username="admin",
+    role="admin",
+    hashed_password=pwd_context.hash("pass"),
     token="c!k<!&UDFzv)DEo?%2iqG9zzTQr@(+ITYcl)Lfs!j7ND#j(T97Wgh)N00x1MuiJF",
     old_token=None,
     token_changed_at=None

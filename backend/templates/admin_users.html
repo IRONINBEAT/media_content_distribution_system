@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>👥 Управление пользователями</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">Добавить пользователя</button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Имя</th>
+                    <th>Логин</th>
+                    <th>Роль</th>
+                    <th>Токен</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in all_users %}
+                <tr>
+                    <td>{{ u.full_name }}</td>
+                    <td>@{{ u.username }}</td>
+                    <td>
+                        <span class="badge {% if u.role=='admin' %}bg-danger{% elif u.role=='operator' %}bg-info{% else %}bg-secondary{% endif %}">
+                            {{ u.role }}
+                        </span>
+                    </td>
+                    <td><code>{{ u.token }}</code></td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary"
+                                onclick="editUser('{{ u.id }}', '{{ u.full_name }}', '{{ u.username }}', '{{ u.role }}')">
+                                Редактировать
+                            </button>
+                            {% if u.id != user.id %}
+                            <form method="post" action="/web/admin/user/delete" onsubmit="return confirm('Удалить пользователя?');">
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="/web/admin/user/create" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новый пользователь</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">ФИО</label>
+                    <input type="text" name="full_name" class="form-control" placeholder="Иванов Иван" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Логин</label>
+                    <input type="text" name="username" class="form-control" placeholder="admin" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" name="password" class="form-control" placeholder="Минимум 6 символов" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Роль</label>
+                    <select name="role" class="form-select">
+                        <option value="video_uploader">Video Uploader (Только контент)</option>
+                        <option value="operator">Operator (Контент + Устройства)</option>
+                        <option value="admin">Admin (Полный доступ)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Создать</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="/web/admin/user/edit" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактирование пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="user_id" id="edit_user_id">
+                <div class="mb-3">
+                    <label class="form-label">ФИО</label>
+                    <input type="text" name="full_name" id="edit_full_name" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Логин</label>
+                    <input type="text" name="username" id="edit_username" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Новый пароль</label>
+                    <input type="password" name="password" class="form-control" placeholder="Оставьте пустым, если не хотите менять">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Роль</label>
+                    <select name="role" id="edit_role" class="form-select">
+                        <option value="video_uploader">Video Uploader</option>
+                        <option value="operator">Operator</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editUser(id, name, username, role) {
+    document.getElementById('edit_user_id').value = id;
+    document.getElementById('edit_full_name').value = name;
+    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_role').value = role;
+    
+    new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
+</script>
+{% endblock %}
