@@ -74,8 +74,8 @@ class VideoItem(BaseModel):
 
 class CheckVideosResponse(BaseModel):
     success: bool = Field(..., description="Флаг успешности запроса")
-    actual: bool = Field(
-        ...,
+    actual: bool | None = Field(
+        None,
         description=(
             "True, если список видео на устройстве совпадает с серверным"
         ),
