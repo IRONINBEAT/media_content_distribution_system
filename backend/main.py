@@ -314,70 +314,71 @@ def upload_file(
     tags=["Auth"],
 )
 def sync_token(data: TokenSyncRequest, db: Session = Depends(get_db)):
-    """
-    Метод автоматического обновления ключей доступа.
-
-    Если администратор обновил токен в панели управления, устройство
-    получит ошибку 403. В этом случае устройство должно вызвать этот
-    метод.
-
-    1. Если предъявлен старый валидный токен и с момента смены прошло
-       менее 5 минут, сервер вернет новый токен.
-    2. Если токен уже актуален, сервер подтвердит это.
-    3. Если устройство заблокировано или токен слишком старый,
-       в доступе будет отказано.
-    """
-    user = db.query(User).filter(
-        (User.token == data.token) | (User.old_token == data.token),
-    ).first()
-
-    if not user:
-        return {"success": False, "message": "Invalid token"}
-
-    device = db.query(Device).filter(
-        Device.device_id == data.id,
-        Device.user_id == user.id,
-    ).first()
-
-    if not device:
-        return {
-            "success": False,
-            "message": ("Устройство не зарегестрировано "
-                        "за данным пользователем"),
-        }
-
-    if device.status != "active":
-        return {
-            "success": False,
-            "message": (
-                f"Статус устройства: {device.status}. В доступе отказано."
-            ),
-        }
-
-    if data.token == user.old_token:
-        grace_period = timedelta(minutes=5)
-
-        if not user.token_changed_at:
+    # 1. Сначала проверяем, является ли токен АКТУАЛЬНЫМ (п.1)
+    current_user = db.query(User).filter(User.token == data.token).first()
+    
+    if current_user:
+        # Токен верный. Проверяем, привязано ли устройство к этому пользователю (п.2)
+        device = db.query(Device).filter(
+            Device.device_id == data.id,
+            Device.user_id == current_user.id
+        ).first()
+        
+        if not device:
             return {
-                "success": False,
-                "message": "Token change timestamp missing",
+                "success": False, 
+                "message": "Неизвестное устройство для данного токена"
             }
-
-        if datetime.utcnow() - user.token_changed_at > grace_period:
-            user.old_token = None
-            db.commit()
-            return {
-                "success": False,
-                "message": "Grace period expired",
-            }
-
+            
+        # Устройство найдено, токен актуален
         return {
             "success": True,
-            "status": "updated",
-            "new_token": user.token,
+            "status": "actual",
+            "message": "Токен актуален"
         }
 
-    return {"success": True, "status": "actual"}
+    # 2. Если токен не актуален, проверяем, является ли он СТАРЫМ (п.3 и п.4)
+    old_user = db.query(User).filter(User.old_token == data.token).first()
+    
+    if old_user:
+        # Токен найден как старый. Проверяем устройство.
+        device = db.query(Device).filter(
+            Device.device_id == data.id,
+            Device.user_id == old_user.id
+        ).first()
+        
+        if not device:
+             return {
+                "success": False, 
+                "message": "Для данного токена неизвестное устройство"
+            }
+
+        # Устройство найдено. Проверяем, был ли уже использован этот старый токен (п.3 vs п.4)
+        if not device.token_synced:
+            # Это ПЕРВЫЙ запрос на синхронизацию с этим старым токеном.
+            # Обновляем статус устройства и выдаем новый токен.
+            device.token_synced = True
+            db.commit()
+            
+            return {
+                "success": True,
+                "status": "updated",
+                "new_token": old_user.token,
+                "message": "Токен обновлен"
+            }
+        else:
+            # Запрос НЕ первый. Устройство уже получило новый токен ранее.
+            return {
+                "success": False,
+                "message": "Текущий токен недействителен (уже был обновлен)"
+            }
+
+    # 3. Токен не найден ни как текущий, ни как старый
+    return {
+        "success": False,
+        "message": "Неверный токен"
+    }
+
 
 
 @app.post(

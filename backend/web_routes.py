@@ -205,18 +205,19 @@ def stream_video(
 
 
 @router.post("/web/user/refresh-token")
-def refresh_user_token(user: User = Depends(get_current_web_user),
-                       db: Session = Depends(get_db)):
+def refresh_user_token(user: User = Depends(get_current_web_user), db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/web/login", status_code=303)
 
-    # Сохраняем историю
+    # 1. Сохраняем старый токен
     user.old_token = user.token
-    user.token_changed_at = datetime.utcnow()
-
-    # Генерируем новый
+    # 2. Генерируем новый
     new_token = secrets.token_urlsafe(48)
     user.token = new_token
+    user.token_changed_at = datetime.utcnow()
+
+    # 3. Сбрасываем флаг синхронизации для ВСЕХ устройств пользователя
+    db.query(Device).filter(Device.user_id == user.id).update({"token_synced": False})
 
     db.commit()
 

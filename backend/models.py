@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -31,6 +31,7 @@ class Device(Base):
     status = Column(String)  # "unverified" / "active" / "blocked"
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="devices")
+    token_synced = Column(Boolean, default=True)
 
 
 class File(Base):
