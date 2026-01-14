@@ -254,6 +254,10 @@ def admin_create_user(
     db: Session = Depends(get_db)
 ):
     require_role(user, ["admin"])
+
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+
     new_user = User(
         full_name=full_name,
         username=username,
