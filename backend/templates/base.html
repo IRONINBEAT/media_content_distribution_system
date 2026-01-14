@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,45 +7,38 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
-        }
-
-        .card {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border: none;
-        }
-
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-        }
-
-        .brand-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 10px;
-            filter: brightness(0) invert(1);
+        body { background-color: #f8f9fa; }
+        .card { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border: none; }
+        .navbar-brand { display: flex; align-items: center; }
+        .brand-icon { width: 24px; height: 24px; margin-right: 10px; filter: brightness(0) invert(1); }
+        /* Улучшение читаемости на маленьких экранах */
+        @media (max-width: 576px) {
+            .container { padding-left: 10px; padding-right: 10px; }
+            h3, h4 { font-size: 1.25rem; }
         }
     </style>
 </head>
-
 <body>
-    <nav class="navbar navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="/web/dashboard">
                 <img src="/static/favicon.png" alt="Иконка" class="brand-icon">
-                Система распространения медиаконтента
+                <span class="d-none d-sm-inline">Система медиаконтента</span>
+                <span class="d-inline d-sm-none">СМК</span>
             </a>
+            
             {% if user %}
-            <div class="d-flex">
-                <div class="d-flex align-items-center">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto align-items-lg-center">
                     {% if user.role == 'admin' %}
-                    <a href="/web/admin/users" class="btn btn-outline-light btn-sm me-3">👥 Пользователи</a>
+                    <a href="/web/admin/users" class="nav-link btn btn-outline-light btn-sm me-lg-3 my-2 my-lg-0 text-white">👥 Пользователи</a>
                     {% endif %}
+                    <span class="navbar-text me-lg-3 d-block mb-2 mb-lg-0">{{ user.full_name }} ({{user.role}})</span>
+                    <a href="/web/logout" class="btn btn-outline-light btn-sm">Выход</a>
                 </div>
-                <span class="navbar-text me-3">{{ user.full_name }} ({{user.role}})</span>
-                <a href="/web/logout" class="btn btn-outline-light">Выход</a>
             </div>
             {% endif %}
         </div>
@@ -54,8 +46,6 @@
     <div class="container">
         {% block content %}{% endblock %}
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>

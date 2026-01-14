@@ -1,23 +1,22 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-6 col-lg-4">
-        <div class="card p-4">
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-12 col-sm-8 col-md-6 col-lg-4">
+        <div class="card p-4 mx-2">
             <h3 class="text-center mb-4">Вход в кабинет</h3>
             {% if error %}
             <div class="alert alert-danger">{{ error }}</div>
             {% endif %}
             <form method="post" action="/web/login">
                 <div class="mb-3">
-                    <label class="form-label">Имя пользователя (логин)</label>
-                    <input type="text" name="username" class="form-control" placeholder="Введите логин..." required>
+                    <label class="form-label">Имя пользователя</label>
+                    <input type="text" name="username" class="form-control form-control-lg" placeholder="Логин" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Пароль</label>
-                    <input type="password" name="password" class="form-control" placeholder="Введите пароль..." required>
+                    <input type="password" name="password" class="form-control form-control-lg" placeholder="Пароль" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Войти</button>
+                <button type="submit" class="btn btn-primary btn-lg w-100 mt-2">Войти</button>
             </form>
         </div>
     </div>

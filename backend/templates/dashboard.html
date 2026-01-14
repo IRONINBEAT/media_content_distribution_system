@@ -1,94 +1,83 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="card mb-4 border-warning">
-        <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-                <h5 class="card-title text-warning">🔑 Управление доступом</h5>
-                <p class="mb-1">Текущий токен: <code class="bg-light p-1">{{ user.token }}</code></p>
-                <small class="text-muted">При обновлении у устройств будет одна попытка, чтобы автоматически получить новый
-                    ключ.</small>
-            </div>
-            <form method="post" action="/web/user/refresh-token">
-                <button type="submit" class="btn btn-outline-warning"
-                    onclick="return confirm('Сгенерировать новый токен? Старый будет работать еще 5 минут для авто-синхронизации устройств.');">
-                    Обновить токен
-                </button>
-            </form>
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+            <h5 class="card-title text-warning">🔑 Управление доступом</h5>
+            <p class="mb-1">Текущий токен: <code class="bg-light p-1" style="word-break: break-all;">{{ user.token }}</code></p>
+            <small class="text-muted">При обновлении у устройств будет одна попытка для авто-синхронизации.</small>
         </div>
+        <form method="post" action="/web/user/refresh-token">
+            <button type="submit" class="btn btn-outline-warning w-100"
+                onclick="return confirm('Сгенерировать новый токен?');">Обновить токен</button>
+        </form>
     </div>
+</div>
+
 <div class="card mb-5">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <div class="card-header bg-white">
         <h4 class="mb-0">🔌 Подключенные устройства</h4>
     </div>
-    <div class="card-body">
-        {% if devices %}
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>ID устройства</th>
-                    <th>Описание</th>
-                    <th>Статус</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for dev in devices %}
-                <tr>
-                    <td><code>{{ dev.device_id }}</code></td>
-                    <td>{{ dev.description or "—" }}</td>
-                    <td>
-                        {% if dev.status == 'active' %}
-                        <span class="badge bg-success">Активен</span>
-                        {% elif dev.status == 'unverified' %}
-                        <span class="badge bg-warning text-dark">Ждет проверки</span>
-                        {% else %}
-                        <span class="badge bg-danger">Заблокирован</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form method="post" action="/web/device/action" class="d-inline">
-                            <input type="hidden" name="device_id" value="{{ dev.id }}">
-                            {% if dev.status == 'unverified' or dev.status == 'blocked' %}
-                            <button name="action" value="activate" class="btn btn-sm btn-success">Активировать</button>
-                            {% endif %}
+    <div class="card-body p-0"> <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Описание</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dev in devices %}
+                    <tr>
+                        <td><code>{{ dev.device_id }}</code></td>
+                        <td class="text-nowrap">{{ dev.description or "—" }}</td>
+                        <td>
                             {% if dev.status == 'active' %}
-                            <button name="action" value="block" class="btn btn-sm btn-warning">Блокировать</button>
+                            <span class="badge bg-success">Активен</span>
+                            {% elif dev.status == 'unverified' %}
+                            <span class="badge bg-warning text-dark">Ждет проверки</span>
+                            {% else %}
+                            <span class="badge bg-danger">Заблокирован</span>
                             {% endif %}
-                            <button name="action" value="delete" class="btn btn-sm btn-danger"
-                                onclick="return confirm('Удалить устройство?');">Удалить</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="text-muted">Устройств пока нет.</p>
-        {% endif %}
+                        </td>
+                        <td class="text-nowrap">
+                            <form method="post" action="/web/device/action" class="d-inline">
+                                <input type="hidden" name="device_id" value="{{ dev.id }}">
+                                {% if dev.status == 'unverified' or dev.status == 'blocked' %}
+                                <button name="action" value="activate" class="btn btn-sm btn-success">Ок</button>
+                                {% endif %}
+                                {% if dev.status == 'active' %}
+                                <button name="action" value="block" class="btn btn-sm btn-warning">Блок</button>
+                                {% endif %}
+                                <button name="action" value="delete" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Удалить?');">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <div class="card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h4 class="mb-0">🎬 Видео контент</h4>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-            + Загрузить видео
-        </button>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">+ Загрузить</button>
     </div>
     <div class="card-body">
-        <div class="row">
-            {% for file in files %}
-            <div class="col-md-4 mb-3">
+        <div class="row g-3"> {% for file in files %}
+            <div class="col-12 col-sm-6 col-lg-4">
                 <div class="card h-100">
                     <video src="/web/stream/{{ file.file_id }}" class="card-img-top" controls
                         style="height: 180px; object-fit: cover; background: #000;"></video>
-                    <div class="card-body">
-                        <h6 class="card-title text-truncate" title="{{ file.description }}">{{ file.description or "Без
-                            описания" }}</h6>
-                        <small class="text-muted d-block mb-2">file_id: {{ file.file_id }}</small>
-
-                        <form method="post" action="/web/file/delete">
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title text-truncate" title="{{ file.description }}">{{ file.description or "Без описания" }}</h6>
+                        <small class="text-muted d-block mb-3">ID: {{ file.file_id }}</small>
+                        <form method="post" action="/web/file/delete" class="mt-auto">
                             <input type="hidden" name="file_id" value="{{ file.file_id }}">
                             <button type="submit" class="btn btn-outline-danger btn-sm w-100"
                                 onclick="return confirm('Удалить файл?');">Удалить</button>
@@ -97,33 +86,31 @@
                 </div>
             </div>
             {% else %}
-            <p class="text-muted">Файлов нет. Загрузите первое видео.</p>
+            <p class="text-muted text-center py-4">Файлов нет. Загрузите первое видео.</p>
             {% endfor %}
         </div>
     </div>
 </div>
 
 <div class="modal fade" id="uploadModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form method="post" action="/web/file/upload" enctype="multipart/form-data">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Загрузка видео</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="/web/file/upload" enctype="multipart/form-data" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Загрузка видео</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Описание</label>
+                    <input type="text" name="description" class="form-control" required>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Описание</label>
-                        <input type="text" name="description" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Файл (MP4)</label>
-                        <input type="file" name="file" class="form-control" accept="video/mp4" required>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label">Файл (MP4)</label>
+                    <input type="file" name="file" class="form-control" accept="video/mp4" required>
                 </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Загрузить</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary w-100">Загрузить</button>
             </div>
         </form>
     </div>
