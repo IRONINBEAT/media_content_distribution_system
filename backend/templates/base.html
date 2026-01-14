@@ -40,25 +40,24 @@
                 <span class="d-inline d-sm-none">СМК</span>
             </a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
+                <div class="navbar-nav ms-auto align-items-lg-center">
                     {% if user %}
-                    <span class="navbar-text text-light fw-bold my-2 my-lg-0">
+                    <span class="navbar-text me-lg-3 custom-nav-user">
                         {{ user.full_name }}
                     </span>
 
                     {% if user.role == 'admin' %}
-                    <a href="/web/admin/users" class="btn btn-outline-info btn-lg btn-sm-lg-custom my-1 my-lg-0 px-4">
+                    <a href="/web/admin/users" class="btn btn-outline-info btn-sm custom-nav-btn me-lg-2">
                         👥 Пользователи
                     </a>
                     {% endif %}
 
-                    <a href="/web/logout" class="btn btn-outline-danger btn-lg btn-sm-lg-custom my-1 my-lg-0 px-4">
+                    <a href="/web/logout" class="btn btn-outline-danger btn-sm custom-nav-btn">
                         Выход
                     </a>
                     {% endif %}
@@ -68,27 +67,31 @@
     </nav>
 
     <style>
+        .custom-nav-user {
+            color: rgba(255, 255, 255, 0.55) !important;
+            font-weight: normal;
+        }
 
-        @media (max-width: 991px) {
+        @media (max-width: 992px) {
             .navbar-nav {
-                padding-top: 1rem;
-                padding-bottom: 1rem;
+                padding: 1rem 0;
             }
 
-            .navbar-nav .btn {
-                display: block;
-                width: 100%;
-                margin-bottom: 0.75rem;
-                padding: 12px;
-                font-size: 1.1rem;
-            }
-
-            .navbar-text {
+            .custom-nav-user {
                 display: block;
                 text-align: center;
-                margin-bottom: 1rem;
-                border-bottom: 1px solid #444;
-                padding-bottom: 0.5rem;
+                padding-bottom: 10px;
+                margin-bottom: 15px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                color: #fff !important;
+            }
+
+            .custom-nav-btn {
+                display: block;
+                width: 100%;
+                padding: 12px !important;
+                font-size: 1.1rem !important;
+                margin-bottom: 10px;
             }
         }
     </style>
