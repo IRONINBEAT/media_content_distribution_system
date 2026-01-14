@@ -2,67 +2,70 @@
 
 {% block content %}
 <div class="card mb-4 border-warning">
-        <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-                <h5 class="card-title text-warning">🔑 Управление доступом</h5>
-                <p class="mb-1">Текущий токен: <code class="bg-light p-1">{{ user.token }}</code></p>
-                <small class="text-muted">При обновлении у устройств будет одна попытка, чтобы автоматически получить новый
-                    ключ.</small>
-            </div>
-            <form method="post" action="/web/user/refresh-token">
-                <button type="submit" class="btn btn-outline-warning"
-                    onclick="return confirm('Сгенерировать новый токен? Старый будет работать еще 5 минут для авто-синхронизации устройств.');">
-                    Обновить токен
-                </button>
-            </form>
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center">
+        <div class="mb-3 mb-md-0">
+            <h5 class="card-title text-warning">🔑 Управление доступом</h5>
+            <p class="mb-1">Текущий токен: <code class="bg-light p-1">{{ user.token }}</code></p>
+            <small class="text-muted">При обновлении у устройств будет одна попытка, чтобы автоматически получить новый
+                ключ.</small>
         </div>
+        <form method="post" action="/web/user/refresh-token" class="w-100 w-md-auto">
+            <button type="submit" class="btn btn-outline-warning w-100"
+                onclick="return confirm('Сгенерировать новый токен? Старый будет работать еще 5 минут для авто-синхронизации устройств.');">
+                Обновить токен
+            </button>
+        </form>
     </div>
+</div>
 <div class="card mb-5">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h4 class="mb-0">🔌 Подключенные устройства</h4>
     </div>
     <div class="card-body">
         {% if devices %}
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>ID устройства</th>
-                    <th>Описание</th>
-                    <th>Статус</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for dev in devices %}
-                <tr>
-                    <td><code>{{ dev.device_id }}</code></td>
-                    <td>{{ dev.description or "—" }}</td>
-                    <td>
-                        {% if dev.status == 'active' %}
-                        <span class="badge bg-success">Активен</span>
-                        {% elif dev.status == 'unverified' %}
-                        <span class="badge bg-warning text-dark">Ждет проверки</span>
-                        {% else %}
-                        <span class="badge bg-danger">Заблокирован</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form method="post" action="/web/device/action" class="d-inline">
-                            <input type="hidden" name="device_id" value="{{ dev.id }}">
-                            {% if dev.status == 'unverified' or dev.status == 'blocked' %}
-                            <button name="action" value="activate" class="btn btn-sm btn-success">Активировать</button>
-                            {% endif %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID устройства</th>
+                        <th>Описание</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dev in devices %}
+                    <tr>
+                        <td><code>{{ dev.device_id }}</code></td>
+                        <td>{{ dev.description or "—" }}</td>
+                        <td>
                             {% if dev.status == 'active' %}
-                            <button name="action" value="block" class="btn btn-sm btn-warning">Блокировать</button>
+                            <span class="badge bg-success">Активен</span>
+                            {% elif dev.status == 'unverified' %}
+                            <span class="badge bg-warning text-dark">Ждет проверки</span>
+                            {% else %}
+                            <span class="badge bg-danger">Заблокирован</span>
                             {% endif %}
-                            <button name="action" value="delete" class="btn btn-sm btn-danger"
-                                onclick="return confirm('Удалить устройство?');">Удалить</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td>
+                            <form method="post" action="/web/device/action" class="d-inline">
+                                <input type="hidden" name="device_id" value="{{ dev.id }}">
+                                {% if dev.status == 'unverified' or dev.status == 'blocked' %}
+                                <button name="action" value="activate"
+                                    class="btn btn-sm btn-success">Активировать</button>
+                                {% endif %}
+                                {% if dev.status == 'active' %}
+                                <button name="action" value="block" class="btn btn-sm btn-warning">Блокировать</button>
+                                {% endif %}
+                                <button name="action" value="delete" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Удалить устройство?');">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
         <p class="text-muted">Устройств пока нет.</p>
         {% endif %}
@@ -77,9 +80,9 @@
         </button>
     </div>
     <div class="card-body">
-        <div class="row">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
             {% for file in files %}
-            <div class="col-md-4 mb-3">
+            <div class="col">
                 <div class="card h-100">
                     <video src="/web/stream/{{ file.file_id }}" class="card-img-top" controls
                         style="height: 180px; object-fit: cover; background: #000;"></video>
