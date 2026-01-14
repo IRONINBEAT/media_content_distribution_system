@@ -28,46 +28,25 @@
             margin-right: 10px;
             filter: brightness(0) invert(1);
         }
-
-        code {
-            word-break: break-all;
-            white-space: normal;
-        }
-
-        @media (max-width: 576px) {
-            .btn-sm {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.875rem;
-            }
-
-            .card-body {
-                padding: 1rem;
-            }
-        }
     </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-dark bg-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="/web/dashboard">
                 <img src="/static/favicon.png" alt="Иконка" class="brand-icon">
-                <span class="d-none d-sm-inline">Система медиаконтента</span>
-                <span class="d-inline d-sm-none">Медиа</span> </a>
-
+                Система распространения медиаконтента
+            </a>
             {% if user %}
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto align-items-lg-center">
+            <div class="d-flex">
+                <div class="d-flex align-items-center">
                     {% if user.role == 'admin' %}
-                    <a href="/web/admin/users" class="nav-link">👥 Пользователи</a>
+                    <a href="/web/admin/users" class="btn btn-outline-light btn-sm me-3">👥 Пользователи</a>
                     {% endif %}
-                    <span class="navbar-text mx-lg-3">{{ user.full_name }}</span>
-                    <a href="/web/logout" class="btn btn-outline-light btn-sm">Выход</a>
                 </div>
+                <span class="navbar-text me-3">{{ user.full_name }} ({{user.role}})</span>
+                <a href="/web/logout" class="btn btn-outline-light">Выход</a>
             </div>
             {% endif %}
         </div>

@@ -7,49 +7,45 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Имя</th>
-                        <th>Логин</th>
-                        <th>Роль</th>
-                        <th>Токен</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in all_users %}
-                    <tr>
-                        <td>{{ u.full_name }}</td>
-                        <td>@{{ u.username }}</td>
-                        <td>
-                            <span
-                                class="badge {% if u.role=='admin' %}bg-danger{% elif u.role=='operator' %}bg-info{% else %}bg-secondary{% endif %}">
-                                {{ u.role }}
-                            </span>
-                        </td>
-                        <td><code>{{ u.token }}</code></td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-primary"
-                                    onclick="editUser('{{ u.id }}', '{{ u.full_name }}', '{{ u.username }}', '{{ u.role }}')">
-                                    Редактировать
-                                </button>
-                                {% if u.id != user.id %}
-                                <form method="post" action="/web/admin/user/delete"
-                                    onsubmit="return confirm('Удалить пользователя?');">
-                                    <input type="hidden" name="user_id" value="{{ u.id }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
-                                </form>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Имя</th>
+                    <th>Логин</th>
+                    <th>Роль</th>
+                    <th>Токен</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in all_users %}
+                <tr>
+                    <td>{{ u.full_name }}</td>
+                    <td>@{{ u.username }}</td>
+                    <td>
+                        <span class="badge {% if u.role=='admin' %}bg-danger{% elif u.role=='operator' %}bg-info{% else %}bg-secondary{% endif %}">
+                            {{ u.role }}
+                        </span>
+                    </td>
+                    <td><code>{{ u.token }}</code></td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary"
+                                onclick="editUser('{{ u.id }}', '{{ u.full_name }}', '{{ u.username }}', '{{ u.role }}')">
+                                Редактировать
+                            </button>
+                            {% if u.id != user.id %}
+                            <form method="post" action="/web/admin/user/delete" onsubmit="return confirm('Удалить пользователя?');">
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -71,8 +67,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Пароль</label>
-                    <input type="password" name="password" class="form-control" placeholder="Минимум 6 символов"
-                        required>
+                    <input type="password" name="password" class="form-control" placeholder="Минимум 6 символов" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Роль</label>
@@ -109,8 +104,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Новый пароль</label>
-                    <input type="password" name="password" class="form-control"
-                        placeholder="Оставьте пустым, если не хотите менять">
+                    <input type="password" name="password" class="form-control" placeholder="Оставьте пустым, если не хотите менять">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Роль</label>
@@ -130,13 +124,13 @@
 </div>
 
 <script>
-    function editUser(id, name, username, role) {
-        document.getElementById('edit_user_id').value = id;
-        document.getElementById('edit_full_name').value = name;
-        document.getElementById('edit_username').value = username;
-        document.getElementById('edit_role').value = role;
-
-        new bootstrap.Modal(document.getElementById('editUserModal')).show();
-    }
+function editUser(id, name, username, role) {
+    document.getElementById('edit_user_id').value = id;
+    document.getElementById('edit_full_name').value = name;
+    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_role').value = role;
+    
+    new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
 </script>
 {% endblock %}
