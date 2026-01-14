@@ -49,6 +49,7 @@
                     {% if user %}
                     <span class="navbar-text me-lg-3 custom-nav-user">
                         {{ user.full_name }}
+                        <span class="user-role-label">({{ user.role }})</span>
                     </span>
 
                     {% if user.role == 'admin' %}
