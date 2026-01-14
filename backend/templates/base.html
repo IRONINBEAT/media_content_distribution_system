@@ -36,7 +36,7 @@
         <div class="container">
             <a class="navbar-brand" href="/web/dashboard">
                 <img src="/static/favicon.png" alt="Иконка" class="brand-icon">
-                <span class="d-none d-sm-inline">Система медиаконтента</span>
+                <span class="d-none d-sm-inline">Система распространения медиаконтента</span>
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -47,7 +47,7 @@
                 <div class="navbar-nav ms-auto align-items-lg-center">
                     {% if user %}
                     {% if user.role == 'admin' %}
-                    <a href="/web/admin/users" class="nav-link text-white me-lg-3">👥 Пользователи</a>
+                    <a href="/web/admin/users" class="nav-link btn btn-outline-light btn-sm me-lg-3 my-2 my-lg-0 text-white">👥 Пользователи</a>
                     {% endif %}
                     <span class="navbar-text me-lg-3">{{ user.full_name }}</span>
                     <a href="/web/logout" class="btn btn-outline-light btn-sm">Выход</a>
