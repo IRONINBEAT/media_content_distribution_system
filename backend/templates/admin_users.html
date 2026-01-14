@@ -1,60 +1,56 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
-    <h3 class="mb-3 mb-md-0">👥 Управление пользователями</h3>
-    <button class="btn btn-primary w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#addUserModal">Добавить пользователя</button>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>👥 Управление пользователями</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">Добавить пользователя</button>
 </div>
 
 <div class="card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Имя</th>
-                        <th class="d-none d-md-table-cell">Логин</th>
-                        <th>Роль</th>
-                        <th class="d-none d-lg-table-cell">Токен</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in all_users %}
-                    <tr>
-                        <td>{{ u.full_name }}</td>
-                        <td class="d-none d-md-table-cell">@{{ u.username }}</td>
-                        <td>
-                            <span class="badge {% if u.role=='admin' %}bg-danger{% elif u.role=='operator' %}bg-info{% else %}bg-secondary{% endif %}">
-                                {{ u.role|truncate(8, True) }}
-                            </span>
-                        </td>
-                        <td class="d-none d-lg-table-cell">
-                            <code class="text-truncate d-block" style="max-width: 120px;" title="{{ u.token }}">{{ u.token }}</code>
-                        </td>
-                        <td>
-                            <div class="d-flex flex-wrap gap-1">
-                                <button class="btn btn-sm btn-outline-primary"
-                                    onclick="editUser('{{ u.id }}', '{{ u.full_name }}', '{{ u.username }}', '{{ u.role }}')">
-                                    Ред.
-                                </button>
-                                {% if u.id != user.id %}
-                                <form method="post" action="/web/admin/user/delete" onsubmit="return confirm('Удалить пользователя?');" class="d-inline">
-                                    <input type="hidden" name="user_id" value="{{ u.id }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Уд.</button>
-                                </form>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Имя</th>
+                    <th>Логин</th>
+                    <th>Роль</th>
+                    <th>Токен</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in all_users %}
+                <tr>
+                    <td>{{ u.full_name }}</td>
+                    <td>@{{ u.username }}</td>
+                    <td>
+                        <span class="badge {% if u.role=='admin' %}bg-danger{% elif u.role=='operator' %}bg-info{% else %}bg-secondary{% endif %}">
+                            {{ u.role }}
+                        </span>
+                    </td>
+                    <td><code>{{ u.token }}</code></td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary"
+                                onclick="editUser('{{ u.id }}', '{{ u.full_name }}', '{{ u.username }}', '{{ u.role }}')">
+                                Редактировать
+                            </button>
+                            {% if u.id != user.id %}
+                            <form method="post" action="/web/admin/user/delete" onsubmit="return confirm('Удалить пользователя?');">
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
 <div class="modal fade" id="addUserModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog">
         <form method="post" action="/web/admin/user/create" class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Новый пользователь</h5>
@@ -83,7 +79,6 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <button type="submit" class="btn btn-primary">Создать</button>
             </div>
         </form>
@@ -91,7 +86,7 @@
 </div>
 
 <div class="modal fade" id="editUserModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog">
         <form method="post" action="/web/admin/user/edit" class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Редактирование пользователя</h5>
@@ -122,7 +117,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
             </div>
         </form>
     </div>
