@@ -36,26 +36,62 @@
         <div class="container">
             <a class="navbar-brand" href="/web/dashboard">
                 <img src="/static/favicon.png" alt="Иконка" class="brand-icon">
-                <span class="d-none d-sm-inline">Система распространения медиаконтента</span>
+                <span class="d-none d-sm-inline">Система медиаконтента</span>
+                <span class="d-inline d-sm-none">СМК</span>
             </a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto align-items-lg-center">
+                <div class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
                     {% if user %}
+                    <span class="navbar-text text-light fw-bold my-2 my-lg-0">
+                        {{ user.full_name }}
+                    </span>
+
                     {% if user.role == 'admin' %}
-                    <a href="/web/admin/users" class="nav-link btn btn-outline-light btn-sm me-lg-3 my-2 my-lg-0 text-white">👥 Пользователи</a>
+                    <a href="/web/admin/users" class="btn btn-outline-info btn-lg btn-sm-lg-custom my-1 my-lg-0 px-4">
+                        👥 Пользователи
+                    </a>
                     {% endif %}
-                    <span class="navbar-text me-lg-3">{{ user.full_name }}</span>
-                    <a href="/web/logout" class="btn btn-outline-light btn-sm">Выход</a>
+
+                    <a href="/web/logout" class="btn btn-outline-danger btn-lg btn-sm-lg-custom my-1 my-lg-0 px-4">
+                        Выход
+                    </a>
                     {% endif %}
                 </div>
             </div>
         </div>
     </nav>
+
+    <style>
+
+        @media (max-width: 991px) {
+            .navbar-nav {
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+            }
+
+            .navbar-nav .btn {
+                display: block;
+                width: 100%;
+                margin-bottom: 0.75rem;
+                padding: 12px;
+                font-size: 1.1rem;
+            }
+
+            .navbar-text {
+                display: block;
+                text-align: center;
+                margin-bottom: 1rem;
+                border-bottom: 1px solid #444;
+                padding-bottom: 0.5rem;
+            }
+        }
+    </style>
     <div class="container">
         {% block content %}{% endblock %}
     </div>
