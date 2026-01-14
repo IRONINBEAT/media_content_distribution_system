@@ -2,19 +2,20 @@
 
 {% block content %}
 <div class="card mb-4 border-warning">
-    <div
-        class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
-        <div class="mb-3 mb-md-0">
-            <h5 class="card-title text-warning">🔑 Управление доступом</h5>
-            <p class="mb-1">Текущий токен: <code class="bg-light p-1 text-break">{{ user.token }}</code></p>
-            <small class="text-muted">При обновлении у устройств будет одна попытка, чтобы автоматически получить новый ключ.</small>
-        </div>
-        <form method="post" action="/web/user/refresh-token" class="w-100 w-md-auto">
-            <button type="submit" class="btn btn-sm btn-outline-warning w-100 w-md-auto px-4"
-                onclick="return confirm('Сгенерировать новый токен? При обновлении у устройств будет одна попытка, чтобы автоматически получить новый ключ.');">
+    <div class="card-body d-flex flex-column align-items-start">
+        <form method="post" action="/web/user/refresh-token" class="mb-3">
+            <button type="submit" class="btn btn-sm btn-outline-warning px-4"
+                onclick="return confirm('Сгенерировать новый токен?...');">
                 Обновить токен
             </button>
         </form>
+
+        <div>
+            <h5 class="card-title text-warning">🔑 Управление доступом</h5>
+            <p class="mb-1">Текущий токен: <code class="bg-light p-1 text-break">{{ user.token }}</code></p>
+            <small class="text-muted">При обновлении у устройств будет одна попытка, чтобы автоматически получить новый
+                ключ.</small>
+        </div>
     </div>
 </div>
 <div class="card mb-5">
