@@ -17,6 +17,7 @@ class User(Base):
     role = Column(String, default="video_uploader")
     old_token = Column(String, nullable=True)
     token_changed_at = Column(DateTime, nullable=True)
+    heartbeat_timeout = Column(Integer, default=60)
 
     devices = relationship("Device", back_populates="user")
     files = relationship("File", back_populates="user")
@@ -32,6 +33,7 @@ class Device(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="devices")
     token_synced = Column(Boolean, default=True)
+    last_heartbeat = Column(DateTime, nullable=True)
 
 
 class File(Base):

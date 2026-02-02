@@ -1,9 +1,8 @@
 import os
 import shutil
 import uuid
-from datetime import datetime, timedelta
-from typing import List
-
+from typing import List, Optional
+from datetime import datetime
 from fastapi import (
     Depends,
     FastAPI,
@@ -56,6 +55,11 @@ class NewDeviceResponse(BaseModel):
     )
 
 
+class HeartbeatRequest(BaseModel):
+    token: str
+    id: str
+
+
 class CheckVideosRequest(BaseModel):
     token: str = Field(..., description="Актуальный токен доступа")
     id: str = Field(..., description="ID устройства, выполняющего проверку")
@@ -73,21 +77,10 @@ class VideoItem(BaseModel):
 
 
 class CheckVideosResponse(BaseModel):
-    success: bool = Field(..., description="Флаг успешности запроса")
-    actual: bool | None = Field(
-        None,
-        description=(
-            "True, если список видео на устройстве совпадает с серверным"
-        ),
-    )
-    message: str = Field(..., description="Пояснение к статусу")
-    videos: List[VideoItem] | None = Field(
-        None,
-        description=(
-            "Актуальный список видео "
-            "(передается только если actual=False)"
-        ),
-    )
+    answer: bool   # Меняем success на answer
+    status: int    # Добавляем поле статуса (204, 205 и т.д.)
+    message: str
+    videos: Optional[List[dict]] = None
 
 
 class VideoResponse(BaseModel):
@@ -308,7 +301,7 @@ def upload_file(
 
 
 @app.post(
-    "/sync-token",
+    "/api/sync-token",
     response_model=TokenSyncResponse,
     summary="Синхронизация токена",
     tags=["Auth"],
@@ -382,7 +375,7 @@ def sync_token(data: TokenSyncRequest, db: Session = Depends(get_db)):
 
 
 @app.post(
-    "/newdevice",
+    "/api/newdevice",
     response_model=NewDeviceResponse,
     summary="Регистрация нового устройства",
     tags=["Devices"],
@@ -423,8 +416,48 @@ def add_device(data: NewDeviceRequest, db: Session = Depends(get_db)):
     return {"success": True, "message": "Запрос на добавление отправлен"}
 
 
+@app.post("/api/heartbeat",
+          summary="Приветствие устройства ",
+          tags=["Devices"])
+def heartbeat(data: HeartbeatRequest, db: Session = Depends(get_db)):
+    # 1. Проверка токена
+    user = db.query(User).filter(User.token == data.token).first()
+    if not user:
+        return None
+
+    # 2. Поиск устройства
+    device = db.query(Device).filter(Device.device_id == data.id,
+                                     Device.user_id == user.id).first()
+
+    if not device:
+        # Устройство отсутствует — добавляем как новое
+        new_device = Device(
+            device_id=data.id,
+            description="Новое устройство",
+            status="unverified",  # Статус "Новое"
+            user_id=user.id,
+            last_heartbeat=datetime.now()
+        )
+        db.add(new_device)
+        db.commit()
+        return {"answer": True, "status": 401, "message": "Unauthorized"}
+
+    # Обновляем время активности
+    device.last_heartbeat = datetime.now()
+    db.commit()
+
+    # 3. Проверка статусов
+    if device.status == "blocked":
+        return {"answer": True, "status": 403, "message": "Forbidden"}
+
+    if device.status == "active":  # Соответствует "200 OK"
+        return {"answer": True, "status": 200, "message": "OK"}
+
+    return {"answer": True, "status": 401, "message": "Unauthorized"}
+
+
 @app.post(
-    "/check-videos",
+    "/api/check-videos",
     response_model=CheckVideosResponse,
     summary="Проверка актуальности контента",
     tags=["Content"],
@@ -448,40 +481,33 @@ def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
         .first()
     )
 
-    if not device:
-        return {"success": False, "message": "Неизвестное устройство"}
+    if not device or device.status == "unverified":
+        return {"answer": True, "status": 401, "message": "Unauthorized"}
+    if device.status == "blocked":
+        return {"answer": True, "status": 403, "message": "Forbidden"}
 
-    if device.status != "active":
-        return {
-            "success": False,
-            "message": "Устройство не активировано или заблокировано",
-        }
-
+    # Если статус active (200 OK), проверяем контент
     server_files = db.query(File).filter(File.user_id == user.id).all()
-    server_file_ids = {file.file_id for file in server_files}
-    client_file_ids = set(data.videos)
+    server_file_ids = [f.file_id for f in server_files]
 
-    if server_file_ids == client_file_ids:
+    # Сравниваем списки
+    if set(server_file_ids) == set(data.videos):
+        return {"answer": True, "status": 204, "message": "No Content"}
+    else:
+        videos_data = [
+            {"id": f.file_id, "url": f"{f.url}"}
+            for f in server_files
+        ]
         return {
-            "success": True,
-            "actual": True,
-            "message": "Список актуален",
+            "answer": True,
+            "status": 205,
+            "message": "Reset Content",
+            "videos": videos_data
         }
-
-    videos_response = [
-        {"id": file.file_id, "url": file.url} for file in server_files
-    ]
-
-    return {
-        "success": True,
-        "actual": False,
-        "message": "Список не актуален",
-        "videos": videos_response,
-    }
 
 
 @app.get(
-    "/download/{file_id}",
+    "/api/download/{file_id}",
     summary="Скачивание файла",
     tags=["Content"],
 )
@@ -531,3 +557,6 @@ def download_file(
         media_type="application/octet-stream",
         filename=os.path.basename(file_path),
     )
+
+
+

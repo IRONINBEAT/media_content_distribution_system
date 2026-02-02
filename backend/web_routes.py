@@ -1,6 +1,8 @@
 import os
 import shutil
 import uuid
+import zlib
+import time
 import secrets
 from datetime import datetime
 from passlib.context import CryptContext
@@ -29,6 +31,23 @@ templates = Jinja2Templates(directory="templates")
 UPLOAD_DIR = "uploads/videos"
 
 
+# ============== Helpful Functions ==============
+
+
+# Вспомогательная функция для проверки прав
+def require_role(user: User, allowed_roles: list):
+    if not user or user.role not in allowed_roles:
+        raise HTTPException(status_code=403,
+                            detail="Доступ запрещен: недостаточно прав")
+
+
+def generate_crc32_filename(original_name: str) -> str:
+    timestamp = str(time.time()).encode('utf-8')
+    crc = zlib.crc32(timestamp) & 0xffffffff
+    ext = original_name.split('.')[-1] if '.' in original_name else 'mp4'
+    return f"{format(crc, 'X')}.{ext}"
+
+
 def get_current_web_user(request: Request, db: Session = Depends(get_db)):
     """Получение текущего пользователя по cookie."""
     token = request.cookies.get("user_token")
@@ -36,6 +55,9 @@ def get_current_web_user(request: Request, db: Session = Depends(get_db)):
         return None
     user = db.query(User).filter(User.token == token).first()
     return user
+
+
+# ============== Public Endpoints ==============
 
 
 @router.get("/web/login", response_class=HTMLResponse)
@@ -93,6 +115,7 @@ def dashboard(
             "user": user,
             "devices": devices,
             "files": files,
+            "now": datetime.now()
         },
     )
 
@@ -135,8 +158,8 @@ def web_upload_file(
         return RedirectResponse(url="/web/login", status_code=303)
     require_role(user, ["admin", "operator", "video_uploader"])
     file_id = uuid.uuid4().hex
-    filename = f"{file_id}_{file.filename}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
+    new_filename = generate_crc32_filename(file.filename)
+    file_path = os.path.join(UPLOAD_DIR, new_filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -225,10 +248,19 @@ def refresh_user_token(user: User = Depends(get_current_web_user), db: Session =
     response.set_cookie(key="user_token", value=new_token)
     return response
 
-# Вспомогательная функция для проверки прав
-def require_role(user: User, allowed_roles: list):
-    if not user or user.role not in allowed_roles:
-        raise HTTPException(status_code=403, detail="Доступ запрещен: недостаточно прав")
+
+@router.post("/web/user/update-timeout")
+def update_timeout(
+    request: Request,
+    timeout: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = get_current_web_user(request, db)
+    if user:
+        user.heartbeat_timeout = timeout
+        db.commit()
+    return RedirectResponse(url="/web/dashboard", status_code=303)
+
 
 # 1. Страница списка пользователей (только для admin)
 @router.get("/web/admin/users", response_class=HTMLResponse)
