@@ -18,23 +18,27 @@
         </div>
     </div>
 </div>
+
 <div class="card mb-4">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h4 class="mb-0">🔌 Подключенные устройства</h4>
     </div>
-    <div class="card-body">
-        <form method="post" action="/web/user/update-timeout" class="mt-1">
+
+    <div class="card-body pt-3 pb-0">
+        <form method="post" action="/web/user/update-timeout">
             <div class="input-group input-group-sm" style="max-width: 200px;">
                 <span class="input-group-text">Таймаут (сек.)</span>
                 <input type="number" name="timeout" class="form-control" value="{{ user.heartbeat_timeout }}">
                 <button class="btn btn-outline-primary" type="submit">✓</button>
             </div>
+            <small class="text-muted d-block mt-1 mb-2">Время ожидания отклика от устройства</small>
         </form>
     </div>
+
     <div class="card-body">
         {% if devices %}
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover align-middle">
                 <thead>
                     <tr>
                         <th>ID устройства</th>
@@ -55,38 +59,43 @@
                             <span class="badge bg-warning text-dark">Новое</span>
                             {% else %}
                             {% if dev.last_heartbeat %}
-                            {# Считаем разницу между текущим временем и последним сигналом #}
                             {% set diff = (now - dev.last_heartbeat).total_seconds() %}
-
-                            {# Сравниваем с персональным таймаутом пользователя #}
                             {% if diff < user.heartbeat_timeout %} <span class="badge bg-success"
-                                title="Последний ответ: {{ dev.last_heartbeat.strftime('%H:%M:%S') }}">
-                                ● Online
-                                </span>
+                                title="Последний ответ: {{ dev.last_heartbeat.strftime('%H:%M:%S') }}">● Online</span>
                                 {% else %}
                                 <span class="badge bg-danger"
-                                    title="Не отвечает с: {{ dev.last_heartbeat.strftime('%H:%M:%S') }}">
-                                    X Offline
-                                </span>
+                                    title="Не отвечает с: {{ dev.last_heartbeat.strftime('%H:%M:%S') }}">X
+                                    Offline</span>
                                 {% endif %}
                                 {% else %}
-                                <span class="badge bg-danger">Offline (Нет данных)</span>
+                                <span class="badge bg-danger">X Offline (Нет данных)</span>
                                 {% endif %}
                                 {% endif %}
                         </td>
                         <td class="text-nowrap">
-                            <form method="post" action="/web/device/action" class="d-flex gap-1"> <input type="hidden"
-                                    name="device_id" value="{{ dev.id }}">
-                                {% if dev.status == 'unverified' or dev.status == 'blocked' %}
-                                <button name="action" value="activate"
-                                    class="btn btn-sm btn-success">Активировать</button>
-                                {% endif %}
-                                {% if dev.status == 'active' %}
-                                <button name="action" value="block" class="btn btn-sm btn-warning">Блокировать</button>
-                                {% endif %}
-                                <button name="action" value="delete" class="btn btn-sm btn-danger"
-                                    onclick="return confirm('Удалить устройство?');">Удалить</button>
-                            </form>
+                            <div class="d-flex gap-1">
+                                <form method="post" action="/web/device/action" class="d-flex gap-1 m-0">
+                                    <input type="hidden" name="device_id" value="{{ dev.id }}">
+
+                                    {% if dev.status == 'unverified' or dev.status == 'blocked' %}
+                                    <button name="action" value="activate"
+                                        class="btn btn-sm btn-success">Активировать</button>
+                                    {% endif %}
+
+                                    {% if dev.status == 'active' %}
+                                    <button name="action" value="block"
+                                        class="btn btn-sm btn-warning">Блокировать</button>
+                                    {% endif %}
+
+                                    <button name="action" value="delete" class="btn btn-sm btn-danger"
+                                        onclick="return confirm('Удалить устройство?');">Удалить</button>
+                                </form>
+
+                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                    data-bs-target="#playlistModal{{ dev.id }}">
+                                    🎬 Плейлист
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -94,7 +103,7 @@
             </table>
         </div>
         {% else %}
-        <p class="text-muted">Устройств пока нет.</p>
+        <p class="text-muted text-center py-3">Устройств пока нет.</p>
         {% endif %}
     </div>
 </div>
@@ -110,13 +119,13 @@
         <div class="row">
             {% for file in files %}
             <div class="col-12 col-md-4 mb-3">
-                <div class="card h-100">
+                <div class="card h-100 shadow-sm">
                     <video src="/web/stream/{{ file.file_id }}" class="card-img-top" controls
                         style="height: 180px; object-fit: cover; background: #000;"></video>
                     <div class="card-body">
                         <h6 class="card-title text-truncate" title="{{ file.description }}">{{ file.description or "Без
                             описания" }}</h6>
-                        <small class="text-muted d-block mb-2">file_id: {{ file.file_id }}</small>
+                        <small class="text-muted d-block mb-2">ID: {{ file.file_id }}</small>
                         <form method="post" action="/web/file/delete">
                             <input type="hidden" name="file_id" value="{{ file.file_id }}">
                             <button type="submit" class="btn btn-outline-danger btn-sm w-100"
@@ -126,35 +135,79 @@
                 </div>
             </div>
             {% else %}
-            <p class="text-muted">Файлов нет. Загрузите первое видео.</p>
+            <p class="text-muted w-100 text-center py-4">Файлов нет. Загрузите первое видео.</p>
             {% endfor %}
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="uploadModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form method="post" action="/web/file/upload" enctype="multipart/form-data">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Загрузка видео</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Описание</label>
-                        <input type="text" name="description" class="form-control" required>
+{% for dev in devices %}
+<div class="modal fade" id="playlistModal{{ dev.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form method="post" action="/web/device/update-playlist" class="modal-content bg-white text-dark">
+            <div class="modal-header">
+                <h5 class="modal-title">Настройка контента: {{ dev.description }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="device_id" value="{{ dev.id }}">
+                <p class="text-muted mb-3">Отметьте видеофайлы для этого устройства:</p>
+
+                <div class="list-group">
+                    {% for file in files %}
+                    <label
+                        class="list-group-item list-group-item-action d-flex gap-3 align-items-center cursor-pointer">
+                        <input class="form-check-input flex-shrink-0" type="checkbox" name="selected_files"
+                            value="{{ file.id }}" style="width: 1.4em; height: 1.4em;" {% if file in dev.files
+                            %}checked{% endif %}>
+
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ file.description or "Без названия" }}</strong><br>
+                                <small class="text-muted">{{ file.file_id }}</small>
+                            </div>
+                            <span class="badge bg-light text-dark border">MP4</span>
+                        </div>
+                    </label>
+                    {% else %}
+                    <div class="text-center py-3 border rounded bg-light">
+                        Нет загруженных файлов.
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Файл (MP4)</label>
-                        <input type="file" name="file" class="form-control" accept="video/mp4" required>
-                    </div>
+                    {% endfor %}
                 </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Загрузить</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить плейлист</button>
             </div>
         </form>
     </div>
 </div>
+{% endfor %}
+
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="/web/file/upload" enctype="multipart/form-data"
+            class="modal-content bg-white text-dark">
+            <div class="modal-header">
+                <h5 class="modal-title">Загрузка видео</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Описание</label>
+                    <input type="text" name="description" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Файл (MP4)</label>
+                    <input type="file" name="file" class="form-control" accept="video/mp4" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Загрузить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}

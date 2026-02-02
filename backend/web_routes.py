@@ -4,6 +4,7 @@ import uuid
 import zlib
 import time
 import secrets
+from typing import List
 from datetime import datetime
 from passlib.context import CryptContext
 
@@ -339,3 +340,34 @@ def admin_edit_user(
     
     db.commit()
     return RedirectResponse(url="/web/admin/users", status_code=303)
+
+@router.post("/web/device/update-playlist")
+def update_device_playlist(
+    device_id: int = Form(...),
+    # FastAPI принимает список значений с одним именем ключа из формы (checkbox)
+    selected_files: List[int] = Form([]), 
+    user: User = Depends(get_current_web_user),
+    db: Session = Depends(get_db),
+):
+    if not user:
+        return RedirectResponse(url="/web/login", status_code=303)
+    
+    # 1. Ищем устройство
+    device = db.query(Device).filter(Device.id == device_id, Device.user_id == user.id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Устройство не найдено")
+
+    # 2. Получаем объекты файлов по списку ID
+    # Filter files to ensure they belong to the user (security check)
+    files_to_assign = db.query(File).filter(
+        File.id.in_(selected_files),
+        File.user_id == user.id
+    ).all()
+
+    # 3. Обновляем список файлов устройства
+    # SQLAlchemy сам очистит старые связи и добавит новые в device_files
+    device.files = files_to_assign
+    
+    db.commit()
+
+    return RedirectResponse(url="/web/dashboard", status_code=303)

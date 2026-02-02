@@ -1,7 +1,22 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Boolean
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    Integer,
+    String,
+    DateTime,
+    Boolean,
+    Table)
 from sqlalchemy.orm import relationship
 
 from database import Base
+
+
+device_files = Table(
+    'device_files',
+    Base.metadata,
+    Column('device_id', Integer, ForeignKey('devices.id'), primary_key=True),
+    Column('file_id', Integer, ForeignKey('files.id'), primary_key=True)
+)
 
 
 class User(Base):
@@ -35,6 +50,12 @@ class Device(Base):
     token_synced = Column(Boolean, default=True)
     last_heartbeat = Column(DateTime, nullable=True)
 
+    files = relationship(
+        "File",
+        secondary=device_files,
+        back_populates="devices"
+    )
+
 
 class File(Base):
     __tablename__ = "files"
@@ -45,3 +66,9 @@ class File(Base):
     description = Column(String)
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="files")
+
+    devices = relationship(
+            "Device",
+            secondary=device_files,
+            back_populates="files"
+        )

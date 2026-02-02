@@ -487,7 +487,8 @@ def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
         return {"answer": True, "status": 403, "message": "Forbidden"}
 
     # Если статус active (200 OK), проверяем контент
-    server_files = db.query(File).filter(File.user_id == user.id).all()
+    server_files = device.files
+
     server_file_ids = [f.file_id for f in server_files]
 
     # Сравниваем списки
