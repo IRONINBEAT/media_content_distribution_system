@@ -78,15 +78,16 @@ def login_submit(
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.username == username).first()
-    
+
     if not user or not pwd_context.verify(password, user.hashed_password):
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Неверный логин или пароль", "user": None},
+            {"request": request, "error": "Неверный логин или пароль",
+             "user": None},
         )
 
     response = RedirectResponse(url="/web/dashboard", status_code=303)
-    response.set_cookie(key="user_token", value=user.token) # Используем токен как сессию
+    response.set_cookie(key="user_token", value=user.token)
     return response
 
 
@@ -229,7 +230,8 @@ def stream_video(
 
 
 @router.post("/web/user/refresh-token")
-def refresh_user_token(user: User = Depends(get_current_web_user), db: Session = Depends(get_db)):
+def refresh_user_token(user: User = Depends(get_current_web_user),
+                       db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/web/login", status_code=303)
 
@@ -241,7 +243,9 @@ def refresh_user_token(user: User = Depends(get_current_web_user), db: Session =
     user.token_changed_at = datetime.utcnow()
 
     # 3. Сбрасываем флаг синхронизации для ВСЕХ устройств пользователя
-    db.query(Device).filter(Device.user_id == user.id).update({"token_synced": False})
+    db.query(Device).filter(Device.user_id == user.id).update({
+        "token_synced": False
+        })
 
     db.commit()
 
@@ -265,23 +269,28 @@ def update_timeout(
 
 # 1. Страница списка пользователей (только для admin)
 @router.get("/web/admin/users", response_class=HTMLResponse)
-def admin_users_page(request: Request, user: User = Depends(get_current_web_user), db: Session = Depends(get_db)):
-    if not user: return RedirectResponse(url="/web/login", status_code=303)
+def admin_users_page(request: Request,
+                     user: User = Depends(get_current_web_user),
+                     db: Session = Depends(get_db)):
+
+    if not user:
+        return RedirectResponse(url="/web/login", status_code=303)
     require_role(user, ["admin"])
-    
+
     users = db.query(User).all()
     return templates.TemplateResponse("admin_users.html", {
-        "request": request, 
-        "user": user, 
+        "request": request,
+        "user": user,
         "all_users": users
     })
+
 
 # 2. Создание пользователя
 @router.post("/web/admin/user/create")
 def admin_create_user(
     full_name: str = Form(...),
     username: str = Form(...),
-    password: str = Form(...), # Новый пароль
+    password: str = Form(...),  # Новый пароль
     role: str = Form(...),
     user: User = Depends(get_current_web_user),
     db: Session = Depends(get_db)
@@ -289,7 +298,8 @@ def admin_create_user(
     require_role(user, ["admin"])
 
     if len(password) < 6:
-        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 6 символов")
+        raise HTTPException(status_code=400,
+                            detail="Пароль должен быть не менее 6 символов")
 
     new_user = User(
         full_name=full_name,
@@ -302,6 +312,7 @@ def admin_create_user(
     db.commit()
     return RedirectResponse(url="/web/admin/users", status_code=303)
 
+
 # 3. Удаление пользователя
 @router.post("/web/admin/user/delete")
 def admin_delete_user(
@@ -311,10 +322,11 @@ def admin_delete_user(
 ):
     require_role(user, ["admin"])
     target_user = db.query(User).filter(User.id == user_id).first()
-    if target_user and target_user.id != user.id: # Нельзя удалить самого себя
+    if target_user and target_user.id != user.id:  # Нельзя удалить самого себя
         db.delete(target_user)
         db.commit()
     return RedirectResponse(url="/web/admin/users", status_code=303)
+
 
 @router.post("/web/admin/user/edit")
 def admin_edit_user(
@@ -327,33 +339,36 @@ def admin_edit_user(
     db: Session = Depends(get_db)
 ):
     require_role(user, ["admin"])
-    
+
     target_user = db.query(User).filter(User.id == user_id).first()
     if password:
         target_user.hashed_password = pwd_context.hash(password)
     if not target_user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
+
     target_user.full_name = full_name
     target_user.username = username
     target_user.role = role
-    
+
     db.commit()
     return RedirectResponse(url="/web/admin/users", status_code=303)
+
 
 @router.post("/web/device/update-playlist")
 def update_device_playlist(
     device_id: int = Form(...),
-    # FastAPI принимает список значений с одним именем ключа из формы (checkbox)
-    selected_files: List[int] = Form([]), 
+    # FastAPI принимает список значений
+    # с одним именем ключа из формы (checkbox)
+    selected_files: List[int] = Form([]),
     user: User = Depends(get_current_web_user),
     db: Session = Depends(get_db),
 ):
     if not user:
         return RedirectResponse(url="/web/login", status_code=303)
-    
+
     # 1. Ищем устройство
-    device = db.query(Device).filter(Device.id == device_id, Device.user_id == user.id).first()
+    device = db.query(Device).filter(Device.id == device_id,
+                                     Device.user_id == user.id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Устройство не найдено")
 
@@ -367,7 +382,7 @@ def update_device_playlist(
     # 3. Обновляем список файлов устройства
     # SQLAlchemy сам очистит старые связи и добавит новые в device_files
     device.files = files_to_assign
-    
+
     db.commit()
 
     return RedirectResponse(url="/web/dashboard", status_code=303)

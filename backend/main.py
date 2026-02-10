@@ -309,20 +309,21 @@ def upload_file(
 def sync_token(data: TokenSyncRequest, db: Session = Depends(get_db)):
     # 1. Сначала проверяем, является ли токен АКТУАЛЬНЫМ (п.1)
     current_user = db.query(User).filter(User.token == data.token).first()
-    
+
     if current_user:
-        # Токен верный. Проверяем, привязано ли устройство к этому пользователю (п.2)
+        # Токен верный. Проверяем, привязано ли
+        # устройство к этому пользователю (п.2)
         device = db.query(Device).filter(
             Device.device_id == data.id,
             Device.user_id == current_user.id
         ).first()
-        
+
         if not device:
             return {
-                "success": False, 
+                "success": False,
                 "message": "Неизвестное устройство для данного токена"
             }
-            
+
         # Устройство найдено, токен актуален
         return {
             "success": True,
@@ -332,27 +333,28 @@ def sync_token(data: TokenSyncRequest, db: Session = Depends(get_db)):
 
     # 2. Если токен не актуален, проверяем, является ли он СТАРЫМ (п.3 и п.4)
     old_user = db.query(User).filter(User.old_token == data.token).first()
-    
+
     if old_user:
         # Токен найден как старый. Проверяем устройство.
         device = db.query(Device).filter(
             Device.device_id == data.id,
             Device.user_id == old_user.id
         ).first()
-        
+
         if not device:
-             return {
-                "success": False, 
+            return {
+                "success": False,
                 "message": "Для данного токена неизвестное устройство"
             }
 
-        # Устройство найдено. Проверяем, был ли уже использован этот старый токен (п.3 vs п.4)
+        # Устройство найдено. Проверяем, был ли уже использован
+        # этот старый токен (п.3 vs п.4)
         if not device.token_synced:
             # Это ПЕРВЫЙ запрос на синхронизацию с этим старым токеном.
             # Обновляем статус устройства и выдаем новый токен.
             device.token_synced = True
             db.commit()
-            
+
             return {
                 "success": True,
                 "status": "updated",
@@ -371,7 +373,6 @@ def sync_token(data: TokenSyncRequest, db: Session = Depends(get_db)):
         "success": False,
         "message": "Неверный токен"
     }
-
 
 
 @app.post(
@@ -558,6 +559,3 @@ def download_file(
         media_type="application/octet-stream",
         filename=os.path.basename(file_path),
     )
-
-
-
