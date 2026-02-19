@@ -61,10 +61,10 @@
                             {% if dev.last_heartbeat %}
                             {% set diff = (now - dev.last_heartbeat).total_seconds() %}
                             {% if diff < user.heartbeat_timeout %} <span class="badge bg-success"
-                                title="Последний ответ: {{ dev.last_heartbeat.strftime('%H:%M:%S') }}">● Online</span>
+                                title="Последний ответ: {{ dev.last_heartbeat.strftime('%d.%m.%Y %H:%M:%S') }}">● Online</span>
                                 {% else %}
                                 <span class="badge bg-danger"
-                                    title="Не отвечает с: {{ dev.last_heartbeat.strftime('%H:%M:%S') }}">X
+                                    title="Не отвечает с: {{ dev.last_heartbeat.strftime('%d.%m.%Y %H:%M:%S') }}">X
                                     Offline</span>
                                 {% endif %}
                                 {% else %}
