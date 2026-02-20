@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve media distribution API App
+After=network.target
+
+[Service] 
+User=root
+Group=root
+WorkingDirectory=/var/www/media_content_distribution_system/backend
+ExecStart=/var/www/media_content_distribution_system/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8000
+Restart=always
+
+[Install]
+WantedBy multi-user.target
