@@ -9,6 +9,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from database import Base
+from datetime import datetime
 
 
 device_files = Table(
@@ -49,6 +50,7 @@ class Device(Base):
     user = relationship("User", back_populates="devices")
     token_synced = Column(Boolean, default=True)
     last_heartbeat = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
 
     files = relationship(
         "File",

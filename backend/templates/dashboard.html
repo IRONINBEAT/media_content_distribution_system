@@ -96,7 +96,7 @@
                                     {% endif %}
 
                                     <button name="action" value="delete" class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Удалить устройство?');">Удалить</button>
+                                        onclick="return confirm('Удалить устройство {{ dev.device_id }}, {{ dev.description }}?');">Удалить</button>
                                 </form>
                             </div>
                         </td>

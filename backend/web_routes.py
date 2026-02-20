@@ -20,6 +20,7 @@ from fastapi import (
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from database import get_db
 from models import Device, File, User
@@ -107,7 +108,12 @@ def dashboard(
     if not user:
         return RedirectResponse(url="/web/login")
 
-    devices = db.query(Device).filter(Device.user_id == user.id).all()
+    devices = (
+        db.query(Device)
+        .filter(Device.user_id == user.id)
+        .order_by(desc(Device.created_at))
+        .all()
+    )
     files = db.query(File).filter(File.user_id == user.id).all()
 
     return templates.TemplateResponse(
