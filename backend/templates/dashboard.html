@@ -97,8 +97,7 @@
 
                                 <div class="vr" style="height: 30px; opacity: 0.8;"></div>
 
-                                <form method="post" action="/web/device/action" class="d-flex gap-1 m-0"
-                                    onsubmit="handleDeviceAction(event, this)">
+                                <form method="post" action="/web/device/action" class="d-flex gap-1 m-0">
                                     <input type="hidden" name="device_id" value="{{ dev.id }}">
 
                                     {% if dev.status == 'unverified' or dev.status == 'blocked' %}
@@ -309,60 +308,6 @@
         });
     });
 
-
-    async function handleDeviceAction(event, form) {
-        // 1. Предотвращаем обычную отправку формы
-        event.preventDefault();
-
-        // Определяем, какая именно кнопка была нажата (activate, block или delete)
-        const action = event.submitter.value;
-        const formData = new FormData(form);
-        formData.append('action', action); // Добавляем значение нажатой кнопки
-
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-
-            if (response.ok) {
-                // Если всё успешно (200 OK), перезагружаем страницу
-                window.location.reload();
-            } else {
-                // Если сервер вернул ошибку (например, 403 Forbidden)
-                const data = await response.json();
-
-                // Показываем текст ошибки в модальном окне
-                document.getElementById('errorMessage').innerText = data.detail || "Произошла ошибка";
-                const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-                errorModal.show();
-            }
-        } catch (error) {
-            console.error("Ошибка сети:", error);
-            alert("Ошибка при связи с сервером");
-        }
-    }
-
 </script>
-
-<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">⚠️ Доступ ограничен</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                    aria-label="Close"></button>
-            </div>
-            <div id="errorMessage" class="modal-body text-center py-4">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 {% endblock %}
