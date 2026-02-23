@@ -2,7 +2,7 @@
 {% block content %}
 <div class="d-flex flex-column align-items-start mb-4">
     <h3>👥 Управление пользователями</h3>
-    
+
     <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#addUserModal">
         Добавить пользователя
     </button>
@@ -27,12 +27,23 @@
                         <td class="text-nowrap">{{ u.full_name }}</td>
                         <td>@{{ u.username }}</td>
                         <td>
-                            <span class="badge {% if u.role=='admin' %}bg-danger{% elif u.role=='operator' %}bg-info{% else %}bg-secondary{% endif %}">
+                            <span
+                                class="badge {% if u.role=='admin' %}bg-danger{% elif u.role=='operator' %}bg-info{% else %}bg-secondary{% endif %}">
                                 {{ u.role }}
                             </span>
                         </td>
                         <td style="min-width: 150px;">
-                            <code style="word-break: break-all; white-space: normal;">{{ u.token }}</code>
+                            <code id="token-{{ u.id }}"
+                                style="word-break: break-all; white-space: normal;">{{ u.token }}</code>
+
+                            <button class="btn btn-sm btn-link p-0 ms-1" onclick="copyToClipboard('token-{{ u.id }}', this)"
+                                title="Копировать">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    class="bi bi-copy" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd"
+                                        d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z" />
+                                </svg>
+                            </button>
                         </td>
                         <td class="text-nowrap">
                             <div class="d-flex gap-2">
@@ -41,7 +52,8 @@
                                     Изменить
                                 </button>
                                 {% if u.id != user.id %}
-                                <form method="post" action="/web/admin/user/delete" onsubmit="return confirm('Удалить?');" class="d-inline">
+                                <form method="post" action="/web/admin/user/delete"
+                                    onsubmit="return confirm('Удалить?');" class="d-inline">
                                     <input type="hidden" name="user_id" value="{{ u.id }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
                                 </form>
@@ -57,7 +69,8 @@
 </div>
 
 <div class="modal fade" id="addUserModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered"> <form method="post" action="/web/admin/user/create" class="modal-content">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="/web/admin/user/create" class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Новый пользователь</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -73,7 +86,8 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Пароль</label>
-                    <input type="password" name="password" class="form-control" placeholder="Минимум 6 символов" minlength="6" required>
+                    <input type="password" name="password" class="form-control" placeholder="Минимум 6 символов"
+                        minlength="6" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Роль</label>
@@ -110,7 +124,8 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Новый пароль</label>
-                    <input type="password" name="password" class="form-control" placeholder="Оставьте пустым, если не меняете" minlength="6">
+                    <input type="password" name="password" class="form-control"
+                        placeholder="Оставьте пустым, если не меняете" minlength="6">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Роль</label>
@@ -130,12 +145,12 @@
 </div>
 
 <script>
-function editUser(id, name, username, role) {
-    document.getElementById('edit_user_id').value = id;
-    document.getElementById('edit_full_name').value = name;
-    document.getElementById('edit_username').value = username;
-    document.getElementById('edit_role').value = role;
-    new bootstrap.Modal(document.getElementById('editUserModal')).show();
-}
+    function editUser(id, name, username, role) {
+        document.getElementById('edit_user_id').value = id;
+        document.getElementById('edit_full_name').value = name;
+        document.getElementById('edit_username').value = username;
+        document.getElementById('edit_role').value = role;
+        new bootstrap.Modal(document.getElementById('editUserModal')).show();
+    }
 </script>
 {% endblock %}
