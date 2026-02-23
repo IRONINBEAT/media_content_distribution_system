@@ -358,33 +358,43 @@ def heartbeat(data: HeartbeatRequest, db: Session = Depends(get_db)):
     # 1. Проверка токена
     user = db.query(User).filter(User.token == data.token).first()
     if not user:
-        return None
+        # Если токен неверный, лучше вернуть ошибку сразу, а не None
+        raise HTTPException(status_code=403, detail="Invalid token")
 
-    # 2. Поиск устройства
-    device = db.query(Device).filter(Device.device_id == data.id,
-                                     Device.user_id == user.id).first()
+    # 2. Поиск устройства во всей базе по уникальному ID
+    device = db.query(Device).filter(Device.device_id == data.id).first()
 
     if not device:
-        # Устройство отсутствует — добавляем как новое
+        # Устройства нет совсем — регистрируем за этим пользователем
         new_device = Device(
             device_id=data.id,
-            status="unverified",  # Статус "Новое"
+            status="unverified",
             user_id=user.id,
             last_heartbeat=datetime.now()
         )
         db.add(new_device)
-        db.commit()
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Ошибка при регистрации устройства")
+        
         return {"answer": True, "status": 401, "message": "Unauthorized"}
 
-    # Обновляем время активности
+    # 3. Если устройство найдено, проверяем, принадлежит ли оно этому пользователю
+    if device.user_id != user.id:
+        # Устройство пытается зайти с чужим токеном
+        return {"answer": True, "status": 403, "message": "Device belongs to another user"}
+
+    # 4. Обновляем время активности (раз мы дошли сюда, значит владелец верный)
     device.last_heartbeat = datetime.now()
     db.commit()
 
-    # 3. Проверка статусов
+    # 5. Проверка статусов
     if device.status == "blocked":
         return {"answer": True, "status": 403, "message": "Forbidden"}
 
-    if device.status == "active":  # Соответствует "200 OK"
+    if device.status == "active":
         return {"answer": True, "status": 200, "message": "OK"}
 
     return {"answer": True, "status": 401, "message": "Unauthorized"}
