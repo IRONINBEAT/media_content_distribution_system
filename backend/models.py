@@ -44,7 +44,6 @@ class Device(Base):
 
     id = Column(Integer, primary_key=True)
     device_id = Column(String, unique=True)
-    description = Column(String)
     status = Column(String)  # "unverified" / "active" / "blocked"
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="devices")

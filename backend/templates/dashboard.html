@@ -40,7 +40,7 @@
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0">🔍</span>
                 <input type="text" id="deviceSearch" class="form-control border-start-0 ps-0"
-                    placeholder="Поиск устройств по ID или описанию..." onkeyup="filterDevices()">
+                    placeholder="Поиск устройств по ID..." onkeyup="filterDevices()">
             </div>
         </div>
         {% if devices %}
@@ -50,7 +50,6 @@
                 <thead>
                     <tr>
                         <th>ID устройства</th>
-                        <th>Описание</th>
                         <th>Статус</th>
                         <th>Действия</th>
                     </tr>
@@ -59,7 +58,6 @@
                     {% for dev in devices %}
                     <tr class="device-row">
                         <td class="search-device-id"><code>{{ dev.device_id }}</code></td>
-                        <td class="search-device-desc">{{ dev.description or "—" }}</td>
                         <td>
                             {% if dev.status == "blocked" %}
                             <span class="badge bg-secondary">Заблокирован</span>
@@ -105,7 +103,7 @@
                                     {% endif %}
 
                                     <button name="action" value="delete" class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Удалить устройство {{ dev.device_id }}, {{ dev.description }}?');">Удалить</button>
+                                        onclick="return confirm('Удалить устройство {{ dev.device_id }}?');">Удалить</button>
                                 </form>
                             </div>
                         </td>
@@ -160,7 +158,7 @@
             <div class="modal-header">
                 <h5 class="modal-title d-flex align-items-center w-100">
                     <span class="text-wrap" style="word-break: break-word; line-height: 1.2;">
-                        Настройка контента: {{ dev.description }} ({{ dev.device_id }})
+                        Настройка контента: {{ dev.device_id }}
                     </span>
                 </h5>
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -283,9 +281,8 @@
 
         rows.forEach(row => {
             const deviceId = row.querySelector('.search-device-id').innerText.toLowerCase();
-            const description = row.querySelector('.search-device-desc').innerText.toLowerCase();
 
-            if (deviceId.includes(filter) || description.includes(filter)) {
+            if (deviceId.includes(filter)) {
                 row.style.display = ""; // Показываем строку
             } else {
                 row.style.display = "none"; // Скрываем строку

@@ -32,29 +32,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ============== Schemas ==============
 
 
-class NewDeviceRequest(BaseModel):
-    token: str = Field(
-        ...,
-        description="Персональный токен пользователя",
-    )
-    id: str = Field(
-        ...,
-        description="Уникальный аппаратный ID регистрируемого устройства",
-    )
-    description: str = Field(
-        ...,
-        description="Краткое описание (например, 'Экран в холле')",
-    )
-
-
-class NewDeviceResponse(BaseModel):
-    success: bool = Field(..., description="Флаг успешности операции")
-    message: str = Field(
-        ...,
-        description="Информационное сообщение или описание ошибки",
-    )
-
-
 class HeartbeatRequest(BaseModel):
     token: str
     id: str
@@ -96,7 +73,6 @@ class UserCreate(BaseModel):
 
 class DeviceCreate(BaseModel):
     device_id: str
-    description: str
     user_id: int
 
 
@@ -375,48 +351,6 @@ def sync_token(data: TokenSyncRequest, db: Session = Depends(get_db)):
     }
 
 
-@app.post(
-    "/api/newdevice",
-    response_model=NewDeviceResponse,
-    summary="Регистрация нового устройства",
-    tags=["Devices"],
-)
-def add_device(data: NewDeviceRequest, db: Session = Depends(get_db)):
-    """
-    Первичная регистрация устройства в системе.
-
-    Устройство отправляет свой уникальный ID и токен владельца.
-    После вызова устройство появится в админ-панели со статусом
-    'unverified' (ожидает подтверждения администратором).
-    """
-    user = db.query(User).filter(User.token == data.token).first()
-    if not user:
-        return {"success": False, "message": "Invalid token"}
-
-    existing_device = (
-        db.query(Device)
-        .filter(Device.device_id == data.id, Device.user_id == user.id)
-        .first()
-    )
-
-    if existing_device:
-        return {
-            "success": False,
-            "message": "такой deviceID уже существует",
-        }
-
-    new_device = Device(
-        device_id=data.id,
-        description=data.description,
-        status="unverified",
-        user_id=user.id,
-    )
-    db.add(new_device)
-    db.commit()
-
-    return {"success": True, "message": "Запрос на добавление отправлен"}
-
-
 @app.post("/api/heartbeat",
           summary="Приветствие устройства ",
           tags=["Devices"])
@@ -434,7 +368,6 @@ def heartbeat(data: HeartbeatRequest, db: Session = Depends(get_db)):
         # Устройство отсутствует — добавляем как новое
         new_device = Device(
             device_id=data.id,
-            description="Новое устройство",
             status="unverified",  # Статус "Новое"
             user_id=user.id,
             last_heartbeat=datetime.now()
