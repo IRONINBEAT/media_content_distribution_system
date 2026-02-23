@@ -443,18 +443,17 @@ def check_videos(data: CheckVideosRequest,
     else:
         videos_data = []
 
-        base_url = str(request.base_url).rstrip('/')
+        host_header = request.headers.get("host")
+        protocol = "https" if request.url.is_secure else "http"
+        base_url = f"{protocol}://{host_header}"
 
         for f in server_files:
-            # f.url обычно хранит "uploads/videos/filename.mp4"
-            # Нам нужно только имя файла
             filename = os.path.basename(f.url)
 
-            # Формируем прямую ссылку через примонтированную папку /media
             direct_download_url = f"{base_url}/media/{filename}"
 
             videos_data.append({
-                "id": f.file_id, 
+                "id": f.file_id,
                 "url": direct_download_url
             })
 
