@@ -10,6 +10,7 @@ from fastapi import (
     Form,
     HTTPException,
     UploadFile,
+    Request
 )
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -28,6 +29,8 @@ app = FastAPI(title="Media-Content Distribution System API")
 app.include_router(web_router, include_in_schema=False)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+app.mount("/media", StaticFiles(directory=UPLOAD_DIR), name="media")
 
 # ============== Schemas ==============
 
@@ -406,18 +409,16 @@ def heartbeat(data: HeartbeatRequest, db: Session = Depends(get_db)):
     summary="Проверка актуальности контента",
     tags=["Content"],
 )
-def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
+def check_videos(data: CheckVideosRequest,
+                 request: Request,
+                 db: Session = Depends(get_db)):
     """
     Синхронизация плейлиста.
-
-    Устройство передает список ID файлов, которые у него есть.
-    Если списки совпадают, actual=True.
-    Если есть различия, actual=False и полный актуальный список
-    ссылок в поле videos.
+    Возвращает абсолютные ссылки на файлы для скачивания.
     """
     user = db.query(User).filter(User.token == data.token).first()
     if not user:
-        return {"success": False, "message": "Invalid token"}
+        return {"answer": False, "status": 403, "message": "Invalid token"}
 
     device = (
         db.query(Device)
@@ -427,22 +428,36 @@ def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
 
     if not device or device.status == "unverified":
         return {"answer": True, "status": 401, "message": "Unauthorized"}
+
     if device.status == "blocked":
         return {"answer": True, "status": 403, "message": "Forbidden"}
 
-    # Если статус active (200 OK), проверяем контент
     server_files = device.files
-
     server_file_ids = [f.file_id for f in server_files]
 
-    # Сравниваем списки
     if set(server_file_ids) == set(data.videos):
-        return {"answer": True, "status": 204, "message": "No Content"}
+        return {"answer": True,
+                "status": 204,
+                "message": "No Content",
+                "videos": []}
     else:
-        videos_data = [
-            {"id": f.file_id, "url": f"{f.url}"}
-            for f in server_files
-        ]
+        videos_data = []
+
+        base_url = str(request.base_url).rstrip('/')
+
+        for f in server_files:
+            # f.url обычно хранит "uploads/videos/filename.mp4"
+            # Нам нужно только имя файла
+            filename = os.path.basename(f.url)
+
+            # Формируем прямую ссылку через примонтированную папку /media
+            direct_download_url = f"{base_url}/media/{filename}"
+
+            videos_data.append({
+                "id": f.file_id, 
+                "url": direct_download_url
+            })
+
         return {
             "answer": True,
             "status": 205,
@@ -451,54 +466,54 @@ def check_videos(data: CheckVideosRequest, db: Session = Depends(get_db)):
         }
 
 
-@app.get(
-    "/api/download/{file_id}",
-    summary="Скачивание файла",
-    tags=["Content"],
-)
-def download_file(
-    file_id: str,
-    token: str,
-    id: str,  # noqa: A002
-    db: Session = Depends(get_db),
-):
-    """
-    Загрузка медиафайла.
+# @app.get(
+#     "/api/download/{file_id}",
+#     summary="Скачивание файла",
+#     tags=["Content"],
+# )
+# def download_file(
+#     file_id: str,
+#     token: str,
+#     id: str,  # noqa: A002
+#     db: Session = Depends(get_db),
+# ):
+#     """
+#     Загрузка медиафайла.
 
-    Возвращает бинарный поток файла (application/octet-stream).
-    Требует передачи ID файла, токена и ID устройства.
-    """
-    user = db.query(User).filter(User.token == token).first()
-    if not user:
-        raise HTTPException(status_code=403, detail="Invalid token")
+#     Возвращает бинарный поток файла (application/octet-stream).
+#     Требует передачи ID файла, токена и ID устройства.
+#     """
+#     user = db.query(User).filter(User.token == token).first()
+#     if not user:
+#         raise HTTPException(status_code=403, detail="Invalid token")
 
-    device = (
-        db.query(Device)
-        .filter(Device.device_id == id, Device.user_id == user.id)
-        .first()
-    )
+#     device = (
+#         db.query(Device)
+#         .filter(Device.device_id == id, Device.user_id == user.id)
+#         .first()
+#     )
 
-    if not device:
-        raise HTTPException(status_code=403, detail="Unknown device")
+#     if not device:
+#         raise HTTPException(status_code=403, detail="Unknown device")
 
-    if device.status != "active":
-        raise HTTPException(status_code=403, detail="Device not active")
+#     if device.status != "active":
+#         raise HTTPException(status_code=403, detail="Device not active")
 
-    file_obj = (
-        db.query(File)
-        .filter(File.file_id == file_id, File.user_id == user.id)
-        .first()
-    )
+#     file_obj = (
+#         db.query(File)
+#         .filter(File.file_id == file_id, File.user_id == user.id)
+#         .first()
+#     )
 
-    if not file_obj:
-        raise HTTPException(status_code=404, detail="File not found")
+#     if not file_obj:
+#         raise HTTPException(status_code=404, detail="File not found")
 
-    file_path = file_obj.url
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=500, detail="File missing on server")
+#     file_path = file_obj.url
+#     if not os.path.exists(file_path):
+#         raise HTTPException(status_code=500, detail="File missing on server")
 
-    return FileResponse(
-        path=file_path,
-        media_type="application/octet-stream",
-        filename=os.path.basename(file_path),
-    )
+#     return FileResponse(
+#         path=file_path,
+#         media_type="application/octet-stream",
+#         filename=os.path.basename(file_path),
+#     )
