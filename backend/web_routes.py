@@ -392,3 +392,32 @@ def update_device_playlist(
     db.commit()
 
     return RedirectResponse(url="/web/dashboard", status_code=303)
+
+
+@router.post("/web/file/update-devices")
+def update_file_devices(
+    file_id: int = Form(...),
+    # Список ID устройств из чекбоксов
+    selected_devices: List[int] = Form([]),
+    user: User = Depends(get_current_web_user),
+    db: Session = Depends(get_db),
+):
+    if not user:
+        return RedirectResponse(url="/web/login", status_code=303)
+
+    # 1. Ищем файл
+    file_obj = db.query(File).filter(File.id == file_id, File.user_id == user.id).first()
+    if not file_obj:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+    # 2. Получаем объекты устройств (только те, что принадлежат пользователю)
+    devices_to_assign = db.query(Device).filter(
+        Device.id.in_(selected_devices),
+        Device.user_id == user.id
+    ).all()
+
+    # 3. Обновляем связь (SQLAlchemy сама обновит таблицу device_files)
+    file_obj.devices = devices_to_assign
+    db.commit()
+
+    return RedirectResponse(url="/web/dashboard", status_code=303)
