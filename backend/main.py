@@ -22,6 +22,7 @@ from models import Device, File, User
 from web_routes import router as web_router
 
 UPLOAD_DIR = "uploads/videos"
+BASE_URL = "http://217.71.129.139:5909"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(title="Media-Content Distribution System API")
@@ -443,14 +444,10 @@ def check_videos(data: CheckVideosRequest,
     else:
         videos_data = []
 
-        host_header = request.headers.get("host")
-        protocol = "https" if request.url.is_secure else "http"
-        base_url = f"{protocol}://{host_header}"
-
         for f in server_files:
             filename = os.path.basename(f.url)
 
-            direct_download_url = f"{base_url}/media/{filename}"
+            direct_download_url = f"{BASE_URL}/media/{filename}"
 
             videos_data.append({
                 "id": f.file_id,
