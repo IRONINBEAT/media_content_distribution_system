@@ -21,7 +21,7 @@ from database import get_db
 from models import Device, File, User
 from web_routes import router as web_router
 
-UPLOAD_DIR = "uploads/videos"
+UPLOAD_DIR = "uploads/media"
 BASE_URL = "http://217.71.129.139:5909"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
