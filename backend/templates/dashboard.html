@@ -128,9 +128,9 @@
 
 <div class="card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h4 class="mb-0">🎬 Видео контент</h4>
+        <h4 class="mb-0">📁 Медиа контент</h4>
         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-            + Загрузить видео
+            + Загрузить файл
         </button>
     </div>
     <div class="card-body">
@@ -138,11 +138,45 @@
             {% for file in files %}
             <div class="col-12 col-md-4 mb-3">
                 <div class="card h-100 shadow-sm">
+
+                    {# ── Превью в зависимости от типа файла ── #}
+                    {% set ftype = file.file_type if file.file_type else "video" %}
+                    {% set ext = file.url.rsplit('.', 1)[-1].upper() if '.' in file.url else ftype.upper() %}
+
+                    {% if ftype == "video" %}
                     <video src="/web/stream/{{ file.file_id }}" class="card-img-top" controls
                         style="height: 180px; object-fit: cover; background: #000;"></video>
+
+                    {% elif ftype == "image" %}
+                    <img src="/web/stream/{{ file.file_id }}" class="card-img-top"
+                        style="height: 180px; object-fit: cover; cursor: zoom-in;"
+                        alt="{{ file.description }}"
+                        onclick="openImageViewer('/web/stream/{{ file.file_id }}', '{{ file.description or file.file_id }}')">
+
+                    {% elif ftype == "pdf" %}
+                    <div class="d-flex flex-column align-items-center justify-content-center bg-light border-bottom"
+                        style="height: 180px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="#dc3545"
+                            class="bi bi-file-earmark-pdf-fill mb-2" viewBox="0 0 16 16">
+                            <path
+                                d="M5.523 12.424q.21-.124.459-.238a8 8 0 0 1-.45.606c-.28.337-.498.516-.635.572l-.035.012a.3.3 0 0 1-.026-.044c-.056-.11-.054-.216.04-.36.106-.165.319-.354.647-.548m2.455-1.647q-.178.037-.346.087l.022-.09q.246-.966.526-1.951l.198.48q.134.32.257.63l-.657.844zm-1.833.83A6.1 6.1 0 0 0 8 9.97c.44.45.852.938 1.217 1.465a7 7 0 0 1-.602.144l-.413.049c-.176-.518-.337-1.05-.458-1.495l-.004-.014zm1.887.04c.14.337.28.671.433.992.08.166.163.33.25.49a.37.37 0 0 1-.04.15c-.07.117-.22.218-.436.302-.21.08-.479.134-.782.141l-.033.001zm.946-2.777c.104-.233.215-.472.335-.718l.046-.093c.085.171.167.344.245.517.264.578.516 1.17.753 1.77-.458.12-.903.234-1.32.337l-.107.025c-.195-.501-.377-1.01-.545-1.519zm1.1-.19q.176-.355.355-.713c.232-.468.457-.912.674-1.323a3.6 3.6 0 0 1 .67 1.01 3.4 3.4 0 0 1 .248 1.213 20 20 0 0 0-1.947-.187M8.5 3.5v2A1.5 1.5 0 0 0 10 7h2v6.5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5zm.5-1H3.5A1.5 1.5 0 0 0 2 4v10a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 14 14V6.5z" />
+                        </svg>
+                        <a href="/web/stream/{{ file.file_id }}" target="_blank"
+                            class="btn btn-sm btn-outline-danger">Открыть PDF</a>
+                    </div>
+                    {% endif %}
+
                     <div class="card-body">
-                        <h6 class="card-title text-truncate" title="{{ file.description }}">{{ file.description or "Без
-                            описания" }}</h6>
+                        <h6 class="card-title text-truncate" title="{{ file.description }}">
+                            {{ file.description or "Без описания" }}
+                            {% if ftype == "video" %}
+                            <span class="badge bg-primary ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{ ext }}</span>
+                            {% elif ftype == "image" %}
+                            <span class="badge bg-success ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{ ext }}</span>
+                            {% elif ftype == "pdf" %}
+                            <span class="badge bg-danger ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{ ext }}</span>
+                            {% endif %}
+                        </h6>
                         <small class="text-muted d-block mb-2">ID: {{ file.file_id }}</small>
                         <div class="d-grid gap-2">
                             <button class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal"
@@ -171,7 +205,7 @@
                             <div class="modal-body">
                                 <input type="hidden" name="file_id" value="{{ file.id }}">
                                 <p class="text-muted small">Выберите устройства, на которых должно воспроизводиться
-                                    видео <strong>{{ file.description or file.file_id }}</strong>:</p>
+                                    файл <strong>{{ file.description or file.file_id }}</strong>:</p>
 
                                 <div class="list-group">
                                     {% for dev in user.devices %}
@@ -200,7 +234,7 @@
                 </div>
             </div>
             {% else %}
-            <p class="text-muted w-100 text-center py-4">Файлов нет. Загрузите первое видео.</p>
+            <p class="text-muted w-100 text-center py-4">Файлов нет. Загрузите первый медиафайл.</p>
             {% endfor %}
         </div>
     </div>
@@ -244,7 +278,14 @@
                                 <strong class="text-dark text-wrap search-title" style="word-break: break-word;">
                                     {{ file.description or "Без названия" }}
                                 </strong>
-                                <span class="badge bg-light text-muted border ms-2 flex-shrink-0">MP4</span>
+                                {% set ftype = file.file_type if file.file_type else "video" %}
+                                {% if ftype == "video" %}
+                                <span class="badge bg-primary ms-2 flex-shrink-0">MP4</span>
+                                {% elif ftype == "image" %}
+                                <span class="badge bg-success ms-2 flex-shrink-0">IMG</span>
+                                {% elif ftype == "pdf" %}
+                                <span class="badge bg-danger ms-2 flex-shrink-0">PDF</span>
+                                {% endif %}
                             </div>
                             <code class="small text-muted text-truncate search-id">{{ file.file_id }}</code>
                         </div>
@@ -266,7 +307,7 @@
         <form method="post" action="/web/file/upload" enctype="multipart/form-data"
             class="modal-content bg-white text-dark">
             <div class="modal-header">
-                <h5 class="modal-title">Загрузка видео</h5>
+                <h5 class="modal-title">Загрузка медиафайла</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -275,8 +316,10 @@
                     <input type="text" name="description" class="form-control" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Файл (MP4)</label>
-                    <input type="file" name="file" class="form-control" accept="video/mp4" required>
+                    <label class="form-label">Файл</label>
+                    <input type="file" name="file" class="form-control"
+                        accept="video/mp4,image/png,image/jpeg,application/pdf" required>
+                    <div class="form-text text-muted">Поддерживаются: MP4, PNG, JPG, JPEG, PDF</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -286,12 +329,27 @@
     </div>
 </div>
 
+<!-- ── Просмотрщик изображений ── -->
+<div class="modal fade" id="imageViewerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-dark border-0">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title text-white text-truncate" id="imageViewerTitle"></h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-2">
+                <img id="imageViewerImg" src="" alt=""
+                    style="max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 4px;">
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .cursor-pointer {
         cursor: pointer;
     }
 
-    /* На очень маленьких экранах уменьшаем отступы в модалке */
     @media (max-width: 576px) {
         .modal-dialog {
             margin: 0.5rem;
@@ -306,11 +364,8 @@
 
 <script>
     function filterPlaylist(deviceId) {
-        // Получаем значение из поля поиска
         const input = document.querySelector(`.playlist-search[data-device-id="${deviceId}"]`);
         const filter = input.value.toLowerCase();
-
-        // Находим все элементы списка именно в этом модальном окне
         const container = document.querySelector(`.playlist-items-${deviceId}`);
         const items = container.getElementsByClassName('playlist-item');
 
@@ -318,12 +373,11 @@
             const title = items[i].querySelector('.search-title').innerText.toLowerCase();
             const fileId = items[i].querySelector('.search-id').innerText.toLowerCase();
 
-            // Если поиск пустой или есть совпадение в названии/ID
             if (title.includes(filter) || fileId.includes(filter)) {
-                items[i].style.display = ""; // Показываем
-                items[i].classList.add('d-flex'); // Возвращаем флекс-стили
+                items[i].style.display = "";
+                items[i].classList.add('d-flex');
             } else {
-                items[i].style.display = "none"; // Скрываем
+                items[i].style.display = "none";
                 items[i].classList.remove('d-flex');
             }
         }
@@ -336,16 +390,10 @@
 
         rows.forEach(row => {
             const deviceId = row.querySelector('.search-device-id').innerText.toLowerCase();
-
-            if (deviceId.includes(filter)) {
-                row.style.display = ""; // Показываем строку
-            } else {
-                row.style.display = "none"; // Скрываем строку
-            }
+            row.style.display = deviceId.includes(filter) ? "" : "none";
         });
     }
 
-    // Сброс поиска при закрытии модального окна
     document.addEventListener('hidden.bs.modal', function (event) {
         const searchInputs = document.querySelectorAll('.playlist-search');
         searchInputs.forEach(input => {
@@ -355,6 +403,11 @@
         });
     });
 
+    function openImageViewer(url, title) {
+        document.getElementById('imageViewerImg').src = url;
+        document.getElementById('imageViewerTitle').textContent = title;
+        new bootstrap.Modal(document.getElementById('imageViewerModal')).show();
+    }
 </script>
 
 {% endblock %}

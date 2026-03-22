@@ -30,7 +30,26 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
-UPLOAD_DIR = "uploads/videos"
+UPLOAD_DIR = "uploads/media"
+
+ALLOWED_EXTENSIONS = {
+    "mp4": ("video", "video/mp4"),
+    "png": ("image", "image/png"),
+    "jpg": ("image", "image/jpeg"),
+    "jpeg": ("image", "image/jpeg"),
+    "pdf": ("pdf", "application/pdf"),
+}
+
+
+def get_file_meta(filename: str):
+    """Возвращает (file_type, mime_type) по расширению файла."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Недопустимый тип файла. Разрешены: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    return ALLOWED_EXTENSIONS[ext]
 
 
 # ============== Helpful Functions ==============
@@ -165,6 +184,8 @@ def web_upload_file(
     if not user:
         return RedirectResponse(url="/web/login", status_code=303)
     require_role(user, ["admin", "operator", "video_uploader"])
+
+    file_type, _ = get_file_meta(file.filename)
     file_id = uuid.uuid4().hex
     new_filename = generate_crc32_filename(file.filename)
     file_path = os.path.join(UPLOAD_DIR, new_filename)
@@ -176,6 +197,7 @@ def web_upload_file(
         file_id=file_id,
         url=file_path,
         description=description,
+        file_type=file_type,
         user_id=user.id,
     )
     db.add(db_file)
@@ -211,7 +233,7 @@ def web_delete_file(
 
 
 @router.get("/web/stream/{file_id}")
-def stream_video(
+def serve_file(
     file_id: str,
     user: User = Depends(get_current_web_user),
     db: Session = Depends(get_db),
@@ -228,9 +250,12 @@ def stream_video(
     if not file or not os.path.exists(file.url):
         raise HTTPException(status_code=404, detail="File not found")
 
+    ext = file.url.rsplit(".", 1)[-1].lower() if "." in file.url else ""
+    _, mime_type = ALLOWED_EXTENSIONS.get(ext, ("video", "video/mp4"))
+
     return FileResponse(
         path=file.url,
-        media_type="video/mp4",
+        media_type=mime_type,
         filename=os.path.basename(file.url),
     )
 

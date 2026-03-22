@@ -65,6 +65,8 @@ class File(Base):
     file_id = Column(String, unique=True)
     url = Column(String)
     description = Column(String)
+    # "video" | "image" | "pdf"
+    file_type = Column(String, default="video")
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="files")
 
