@@ -156,10 +156,21 @@
                     {% elif ftype == "pdf" %}
                     <div class="d-flex flex-column align-items-center justify-content-center bg-light border-bottom"
                         style="height: 180px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="#dc3545"
-                            class="bi bi-file-earmark-pdf-fill mb-2" viewBox="0 0 16 16">
-                            <path
-                                d="M5.523 12.424q.21-.124.459-.238a8 8 0 0 1-.45.606c-.28.337-.498.516-.635.572l-.035.012a.3.3 0 0 1-.026-.044c-.056-.11-.054-.216.04-.36.106-.165.319-.354.647-.548m2.455-1.647q-.178.037-.346.087l.022-.09q.246-.966.526-1.951l.198.48q.134.32.257.63l-.657.844zm-1.833.83A6.1 6.1 0 0 0 8 9.97c.44.45.852.938 1.217 1.465a7 7 0 0 1-.602.144l-.413.049c-.176-.518-.337-1.05-.458-1.495l-.004-.014zm1.887.04c.14.337.28.671.433.992.08.166.163.33.25.49a.37.37 0 0 1-.04.15c-.07.117-.22.218-.436.302-.21.08-.479.134-.782.141l-.033.001zm.946-2.777c.104-.233.215-.472.335-.718l.046-.093c.085.171.167.344.245.517.264.578.516 1.17.753 1.77-.458.12-.903.234-1.32.337l-.107.025c-.195-.501-.377-1.01-.545-1.519zm1.1-.19q.176-.355.355-.713c.232-.468.457-.912.674-1.323a3.6 3.6 0 0 1 .67 1.01 3.4 3.4 0 0 1 .248 1.213 20 20 0 0 0-1.947-.187M8.5 3.5v2A1.5 1.5 0 0 0 10 7h2v6.5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5zm.5-1H3.5A1.5 1.5 0 0 0 2 4v10a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 14 14V6.5z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="52" height="64" viewBox="0 0 52 64" class="mb-3">
+                            <!-- страница -->
+                            <rect x="1" y="1" width="40" height="52" rx="4" ry="4"
+                                fill="none" stroke="#dc3545" stroke-width="2"/>
+                            <!-- загнутый угол -->
+                            <polyline points="29,1 29,13 41,13"
+                                fill="none" stroke="#dc3545" stroke-width="2" stroke-linejoin="round"/>
+                            <!-- линии текста -->
+                            <line x1="8" y1="22" x2="33" y2="22" stroke="#dc3545" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+                            <line x1="8" y1="30" x2="33" y2="30" stroke="#dc3545" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+                            <line x1="8" y1="38" x2="24" y2="38" stroke="#dc3545" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+                            <!-- бейдж PDF -->
+                            <rect x="6" y="46" width="30" height="14" rx="3" fill="#dc3545"/>
+                            <text x="21" y="57" text-anchor="middle" fill="white"
+                                font-family="Arial, sans-serif" font-size="8" font-weight="bold">PDF</text>
                         </svg>
                         <a href="/web/stream/{{ file.file_id }}" target="_blank"
                             class="btn btn-sm btn-outline-danger">Открыть PDF</a>
