@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+import json
 from typing import List, Optional
 from datetime import datetime
 from fastapi import (
@@ -16,9 +17,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
-from database import get_db
-from models import Device, File, User
+from database import engine, get_db
+from models import Device, DeviceFileSettings, File, User
 from web_routes import router as web_router
 
 UPLOAD_DIR = "uploads/media"
@@ -55,6 +57,11 @@ class CheckVideosRequest(BaseModel):
 class VideoItem(BaseModel):
     id: str = Field(..., description="Уникальный ID файла в системе")
     url: str = Field(..., description="Путь для скачивания файла")
+    file_type: str = Field(..., description="Тип файла: video/image/pdf")
+    playback: dict | None = Field(
+        None,
+        description="Настройки воспроизведения для конкретного устройства",
+    )
 
 
 class CheckVideosResponse(BaseModel):
@@ -85,6 +92,65 @@ class FileCreate(BaseModel):
     url: str
     description: str
     user_id: int
+
+
+def get_file_type_from_name(filename: str):
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext == "mp4":
+        return "video"
+    if ext in {"png", "jpg", "jpeg"}:
+        return "image"
+    if ext == "pdf":
+        return "pdf"
+    return "video"
+
+
+def ensure_schema_migrations():
+    """
+    Lightweight migration for existing SQLite deployments without Alembic.
+    """
+    with Session(bind=engine) as migration_db:
+        migration_db.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS device_file_settings (
+                    device_id INTEGER NOT NULL,
+                    file_id INTEGER NOT NULL,
+                    duration_seconds INTEGER,
+                    pdf_page_durations_json TEXT,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (device_id, file_id),
+                    FOREIGN KEY(device_id) REFERENCES devices (id),
+                    FOREIGN KEY(file_id) REFERENCES files (id)
+                )
+                """
+            )
+        )
+
+        old_table_exists = migration_db.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='device_files'")
+        ).first()
+        if old_table_exists:
+            migration_db.execute(
+                text(
+                    """
+                    INSERT OR IGNORE INTO device_file_settings (device_id, file_id, duration_seconds, sort_order)
+                    SELECT df.device_id,
+                           df.file_id,
+                           CASE
+                               WHEN f.file_type = 'image' THEN 5
+                               ELSE NULL
+                           END AS duration_seconds,
+                           0
+                    FROM device_files df
+                    JOIN files f ON f.id = df.file_id
+                    """
+                )
+            )
+        migration_db.commit()
+
+
+ensure_schema_migrations()
 
 
 class TokenSyncRequest(BaseModel):
@@ -267,6 +333,7 @@ def upload_file(
         file_id=file_id,
         url=file_path,
         description=description,
+        file_type=get_file_type_from_name(file.filename),
         user_id=user.id,
     )
 
@@ -433,8 +500,14 @@ def check_videos(data: CheckVideosRequest,
     if device.status == "blocked":
         return {"answer": True, "status": 403, "message": "Forbidden"}
 
-    server_files = device.files
-    server_file_ids = [f.file_id for f in server_files]
+    settings_rows = (
+        db.query(DeviceFileSettings)
+        .join(File, File.id == DeviceFileSettings.file_id)
+        .filter(DeviceFileSettings.device_id == device.id, File.user_id == user.id)
+        .order_by(DeviceFileSettings.sort_order.asc(), DeviceFileSettings.file_id.asc())
+        .all()
+    )
+    server_file_ids = [row.file.file_id for row in settings_rows]
 
     if set(server_file_ids) == set(data.videos):
         return {"answer": True,
@@ -444,14 +517,21 @@ def check_videos(data: CheckVideosRequest,
     else:
         videos_data = []
 
-        for f in server_files:
+        for row in settings_rows:
+            f = row.file
             filename = os.path.basename(f.url)
 
             direct_download_url = f"{BASE_URL}/media/{filename}"
+            playback = {
+                "duration_seconds": row.duration_seconds,
+                "pdf_page_durations": json.loads(row.pdf_page_durations_json) if row.pdf_page_durations_json else [],
+            }
 
             videos_data.append({
                 "id": f.file_id,
-                "url": direct_download_url
+                "url": direct_download_url,
+                "file_type": f.file_type,
+                "playback": playback,
             })
 
         return {

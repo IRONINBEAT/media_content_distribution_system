@@ -4,6 +4,8 @@ import uuid
 import zlib
 import time
 import secrets
+import json
+import re
 from typing import List
 from datetime import datetime
 from passlib.context import CryptContext
@@ -17,13 +19,13 @@ from fastapi import (
     Request,
     UploadFile,
 )
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from database import get_db
-from models import Device, File, User
+from models import Device, DeviceFileSettings, File, User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -50,6 +52,48 @@ def get_file_meta(filename: str):
             detail=f"Недопустимый тип файла. Разрешены: {', '.join(ALLOWED_EXTENSIONS)}"
         )
     return ALLOWED_EXTENSIONS[ext]
+
+
+def parse_pdf_page_durations(raw_value: str):
+    if not raw_value:
+        return []
+    try:
+        parsed = json.loads(raw_value)
+        if isinstance(parsed, list):
+            return parsed
+    except json.JSONDecodeError:
+        return []
+    return []
+
+
+def get_default_duration(file_obj: File):
+    if file_obj.file_type == "image":
+        return 5
+    return None
+
+
+def estimate_pdf_page_count(file_path: str):
+    """
+    Lightweight PDF page count without external dependencies.
+    """
+    if not os.path.exists(file_path):
+        return 1
+    try:
+        with open(file_path, "rb") as pdf_file:
+            content = pdf_file.read()
+
+        # Heuristic 1: explicit /Count in /Pages tree nodes.
+        text = content.decode("latin-1", errors="ignore")
+        count_matches = re.findall(r"/Count\s+(\d+)", text)
+        count_from_tree = max((int(value) for value in count_matches), default=0)
+
+        # Heuristic 2: number of page objects. Avoid matching /Type /Pages.
+        page_objects = len(re.findall(r"/Type\s*/Page(?!s)\b", text))
+
+        estimated = max(count_from_tree, page_objects, 1)
+        return estimated
+    except OSError:
+        return 1
 
 
 # ============== Helpful Functions ==============
@@ -134,6 +178,20 @@ def dashboard(
         .all()
     )
     files = db.query(File).filter(File.user_id == user.id).all()
+    device_file_settings_map = {}
+    settings_rows = (
+        db.query(DeviceFileSettings)
+        .join(Device, Device.id == DeviceFileSettings.device_id)
+        .join(File, File.id == DeviceFileSettings.file_id)
+        .filter(Device.user_id == user.id, File.user_id == user.id)
+        .all()
+    )
+    for row in settings_rows:
+        key = f"{row.device_id}:{row.file_id}"
+        device_file_settings_map[key] = {
+            "duration_seconds": row.duration_seconds,
+            "pdf_page_durations": parse_pdf_page_durations(row.pdf_page_durations_json),
+        }
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -142,6 +200,7 @@ def dashboard(
             "user": user,
             "devices": devices,
             "files": files,
+            "device_file_settings_map": device_file_settings_map,
             "now": datetime.now()
         },
     )
@@ -403,16 +462,34 @@ def update_device_playlist(
     if not device:
         raise HTTPException(status_code=404, detail="Устройство не найдено")
 
-    # 2. Получаем объекты файлов по списку ID
-    # Filter files to ensure they belong to the user (security check)
     files_to_assign = db.query(File).filter(
         File.id.in_(selected_files),
         File.user_id == user.id
     ).all()
 
-    # 3. Обновляем список файлов устройства
-    # SQLAlchemy сам очистит старые связи и добавит новые в device_files
-    device.files = files_to_assign
+    selected_file_ids = {file_obj.id for file_obj in files_to_assign}
+    existing_settings = (
+        db.query(DeviceFileSettings)
+        .filter(DeviceFileSettings.device_id == device.id)
+        .all()
+    )
+    for setting_row in existing_settings:
+        if setting_row.file_id not in selected_file_ids:
+            db.delete(setting_row)
+
+    existing_by_file_id = {row.file_id: row for row in existing_settings}
+    for index, file_obj in enumerate(files_to_assign):
+        if file_obj.id in existing_by_file_id:
+            existing_by_file_id[file_obj.id].sort_order = index
+            continue
+        db.add(
+            DeviceFileSettings(
+                device_id=device.id,
+                file_id=file_obj.id,
+                duration_seconds=get_default_duration(file_obj),
+                sort_order=index,
+            )
+        )
 
     db.commit()
 
@@ -435,14 +512,151 @@ def update_file_devices(
     if not file_obj:
         raise HTTPException(status_code=404, detail="Файл не найден")
 
-    # 2. Получаем объекты устройств (только те, что принадлежат пользователю)
     devices_to_assign = db.query(Device).filter(
         Device.id.in_(selected_devices),
         Device.user_id == user.id
     ).all()
 
-    # 3. Обновляем связь (SQLAlchemy сама обновит таблицу device_files)
-    file_obj.devices = devices_to_assign
+    selected_device_ids = {device.id for device in devices_to_assign}
+    existing_settings = (
+        db.query(DeviceFileSettings)
+        .filter(DeviceFileSettings.file_id == file_obj.id)
+        .all()
+    )
+    for setting_row in existing_settings:
+        if setting_row.device_id not in selected_device_ids:
+            db.delete(setting_row)
+
+    existing_by_device_id = {row.device_id: row for row in existing_settings}
+    for device in devices_to_assign:
+        if device.id in existing_by_device_id:
+            continue
+        db.add(
+            DeviceFileSettings(
+                device_id=device.id,
+                file_id=file_obj.id,
+                duration_seconds=get_default_duration(file_obj),
+            )
+        )
     db.commit()
 
+    return RedirectResponse(url="/web/dashboard", status_code=303)
+
+
+@router.get("/web/device/file-settings/{device_id}/{file_id}")
+def get_device_file_settings(
+    device_id: int,
+    file_id: int,
+    user: User = Depends(get_current_web_user),
+    db: Session = Depends(get_db),
+):
+    if not user:
+        raise HTTPException(status_code=403, detail="Not authenticated")
+
+    device = db.query(Device).filter(Device.id == device_id, Device.user_id == user.id).first()
+    file_obj = db.query(File).filter(File.id == file_id, File.user_id == user.id).first()
+    if not device or not file_obj:
+        raise HTTPException(status_code=404, detail="Устройство или файл не найден")
+
+    setting_row = db.query(DeviceFileSettings).filter(
+        DeviceFileSettings.device_id == device.id,
+        DeviceFileSettings.file_id == file_obj.id,
+    ).first()
+
+    if not setting_row:
+        setting_row = DeviceFileSettings(
+            device_id=device.id,
+            file_id=file_obj.id,
+            duration_seconds=get_default_duration(file_obj),
+            pdf_page_durations_json=None,
+        )
+        db.add(setting_row)
+        db.commit()
+
+    payload = {
+        "device_id": device.id,
+        "file_id": file_obj.id,
+        "file_type": file_obj.file_type,
+        "duration_seconds": setting_row.duration_seconds,
+        "pdf_page_durations": parse_pdf_page_durations(setting_row.pdf_page_durations_json),
+        "stream_url": f"/web/stream/{file_obj.file_id}",
+    }
+    return JSONResponse(payload)
+
+
+@router.get("/web/file/{file_id}/pdf-preview")
+def get_pdf_preview_config(
+    file_id: int,
+    user: User = Depends(get_current_web_user),
+    db: Session = Depends(get_db),
+):
+    if not user:
+        raise HTTPException(status_code=403, detail="Not authenticated")
+
+    file_obj = db.query(File).filter(File.id == file_id, File.user_id == user.id).first()
+    if not file_obj:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    if file_obj.file_type != "pdf":
+        raise HTTPException(status_code=400, detail="Preview доступен только для PDF")
+
+    return JSONResponse({
+        "file_id": file_obj.id,
+        "page_count": estimate_pdf_page_count(file_obj.url),
+    })
+
+
+@router.post("/web/device/file-settings")
+def update_device_file_settings(
+    device_id: int = Form(...),
+    file_id: int = Form(...),
+    duration_seconds: int = Form(None),
+    pdf_page_durations_json: str = Form(None),
+    user: User = Depends(get_current_web_user),
+    db: Session = Depends(get_db),
+):
+    if not user:
+        return RedirectResponse(url="/web/login", status_code=303)
+
+    device = db.query(Device).filter(Device.id == device_id, Device.user_id == user.id).first()
+    file_obj = db.query(File).filter(File.id == file_id, File.user_id == user.id).first()
+    if not device or not file_obj:
+        raise HTTPException(status_code=404, detail="Устройство или файл не найден")
+
+    if duration_seconds is not None and duration_seconds <= 0:
+        raise HTTPException(status_code=400, detail="Длительность должна быть больше 0")
+
+    parsed_pdf_durations = parse_pdf_page_durations(pdf_page_durations_json)
+    if file_obj.file_type == "pdf" and parsed_pdf_durations:
+        for item in parsed_pdf_durations:
+            if not isinstance(item, dict):
+                raise HTTPException(status_code=400, detail="Некорректный формат PDF страниц")
+            page_number = item.get("page")
+            page_duration = item.get("duration")
+            if not isinstance(page_number, int) or page_number < 1:
+                raise HTTPException(status_code=400, detail="Некорректный номер страницы")
+            if not isinstance(page_duration, int) or page_duration <= 0:
+                raise HTTPException(status_code=400, detail="Некорректная длительность страницы")
+
+    setting_row = db.query(DeviceFileSettings).filter(
+        DeviceFileSettings.device_id == device.id,
+        DeviceFileSettings.file_id == file_obj.id,
+    ).first()
+    if not setting_row:
+        setting_row = DeviceFileSettings(
+            device_id=device.id,
+            file_id=file_obj.id,
+            sort_order=0,
+        )
+        db.add(setting_row)
+
+    if file_obj.file_type == "pdf":
+        setting_row.duration_seconds = None
+        setting_row.pdf_page_durations_json = json.dumps(parsed_pdf_durations) if parsed_pdf_durations else None
+    else:
+        if duration_seconds is None:
+            duration_seconds = get_default_duration(file_obj)
+        setting_row.duration_seconds = duration_seconds
+        setting_row.pdf_page_durations_json = None
+
+    db.commit()
     return RedirectResponse(url="/web/dashboard", status_code=303)
