@@ -5,25 +5,19 @@ from sqlalchemy import (
     String,
     DateTime,
     Boolean,
-    Text,
-)
+    Table)
 from sqlalchemy.orm import relationship
 
 from database import Base
 from datetime import datetime
 
 
-class DeviceFileSettings(Base):
-    __tablename__ = "device_file_settings"
-
-    device_id = Column(Integer, ForeignKey("devices.id"), primary_key=True)
-    file_id = Column(Integer, ForeignKey("files.id"), primary_key=True)
-    duration_seconds = Column(Integer, nullable=True)
-    pdf_page_durations_json = Column(Text, nullable=True)
-    sort_order = Column(Integer, default=0, nullable=False)
-
-    device = relationship("Device", back_populates="device_file_settings")
-    file = relationship("File", back_populates="device_file_settings")
+device_files = Table(
+    'device_files',
+    Base.metadata,
+    Column('device_id', Integer, ForeignKey('devices.id'), primary_key=True),
+    Column('file_id', Integer, ForeignKey('files.id'), primary_key=True)
+)
 
 
 class User(Base):
@@ -57,15 +51,10 @@ class Device(Base):
     last_heartbeat = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
-    device_file_settings = relationship(
-        "DeviceFileSettings",
-        back_populates="device",
-        cascade="all, delete-orphan"
-    )
     files = relationship(
         "File",
-        secondary="device_file_settings",
-        viewonly=True,
+        secondary=device_files,
+        back_populates="devices"
     )
 
 
@@ -81,13 +70,8 @@ class File(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="files")
 
-    device_file_settings = relationship(
-        "DeviceFileSettings",
-        back_populates="file",
-        cascade="all, delete-orphan"
-    )
     devices = relationship(
-        "Device",
-        secondary="device_file_settings",
-        viewonly=True,
-    )
+            "Device",
+            secondary=device_files,
+            back_populates="files"
+        )

@@ -299,14 +299,6 @@
                                 {% endif %}
                             </div>
                             <code class="small text-muted text-truncate search-id">{{ file.file_id }}</code>
-                            <div class="mt-2">
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-outline-secondary"
-                                    onclick='openFileSettings({{ dev.id }}, {{ file.id }}, {{ (file.file_type or "video")|tojson }}, {{ (file.description or file.file_id)|tojson }})'>
-                                    Настроить
-                                </button>
-                            </div>
                         </div>
                     </label>
                     {% endfor %}
@@ -320,55 +312,6 @@
     </div>
 </div>
 {% endfor %}
-
-<div class="modal fade" id="mediaSettingsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <form id="mediaSettingsForm" method="post" action="/web/device/file-settings" class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Настройка воспроизведения</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" name="device_id" id="mediaSettingsDeviceId">
-                <input type="hidden" name="file_id" id="mediaSettingsFileId">
-                <input type="hidden" name="pdf_page_durations_json" value="">
-                <div class="mb-2 text-muted small" id="mediaSettingsTitle"></div>
-                <div class="mb-3">
-                    <label class="form-label">Длительность воспроизведения (сек.)</label>
-                    <input type="number" name="duration_seconds" id="mediaDurationInput" min="1" class="form-control" required>
-                </div>
-                <div class="text-muted small">Для видео по умолчанию подставляется длина ролика, для фото — 5 секунд.</div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="submit" class="btn btn-primary">Сохранить</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="modal fade" id="pdfSettingsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <form id="pdfSettingsForm" method="post" action="/web/device/file-settings" class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Настройка PDF по страницам</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" name="device_id" id="pdfSettingsDeviceId">
-                <input type="hidden" name="file_id" id="pdfSettingsFileId">
-                <input type="hidden" name="duration_seconds" value="">
-                <input type="hidden" name="pdf_page_durations_json" id="pdfPageDurationsJson">
-                <div class="mb-2 text-muted small" id="pdfSettingsTitle"></div>
-                <div id="pdfPagesContainer" class="list-group"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="submitPdfSettings()">Сохранить</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -431,9 +374,6 @@
 </style>
 
 <script>
-    let mediaSettingsModalInstance = null;
-    let pdfSettingsModalInstance = null;
-
     function filterPlaylist(deviceId) {
         const input = document.querySelector(`.playlist-search[data-device-id="${deviceId}"]`);
         const filter = input.value.toLowerCase();
@@ -478,123 +418,6 @@
         document.getElementById('imageViewerImg').src = url;
         document.getElementById('imageViewerTitle').textContent = title;
         new bootstrap.Modal(document.getElementById('imageViewerModal')).show();
-    }
-
-    async function openFileSettings(deviceId, fileId, fileType, fileTitle) {
-        const response = await fetch(`/web/device/file-settings/${deviceId}/${fileId}`);
-        if (!response.ok) {
-            alert('Не удалось получить настройки файла');
-            return;
-        }
-        const data = await response.json();
-        if (fileType === 'pdf') {
-            await openPdfSettings(data, fileTitle);
-            return;
-        }
-        await openMediaSettings(data, fileTitle);
-    }
-
-    async function openMediaSettings(data, fileTitle) {
-        document.getElementById('mediaSettingsDeviceId').value = data.device_id;
-        document.getElementById('mediaSettingsFileId').value = data.file_id;
-        document.getElementById('mediaSettingsTitle').textContent = fileTitle;
-        const input = document.getElementById('mediaDurationInput');
-        let duration = data.duration_seconds;
-
-        if (!duration && data.file_type === 'image') {
-            duration = 5;
-        }
-        if (!duration && data.file_type === 'video') {
-            duration = await detectVideoDuration(data.stream_url);
-        }
-        input.value = duration || '';
-
-        if (!mediaSettingsModalInstance) {
-            mediaSettingsModalInstance = new bootstrap.Modal(document.getElementById('mediaSettingsModal'));
-        }
-        mediaSettingsModalInstance.show();
-    }
-
-    function renderPdfPageRow(pageNumber, pageDuration) {
-        return `
-            <div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-center gap-3">
-                    <div><strong>Страница ${pageNumber}</strong></div>
-                    <div style="width: 180px;">
-                        <input type="number" min="1" class="form-control pdf-page-duration" data-page="${pageNumber}" value="${pageDuration}">
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    async function openPdfSettings(data, fileTitle) {
-        document.getElementById('pdfSettingsDeviceId').value = data.device_id;
-        document.getElementById('pdfSettingsFileId').value = data.file_id;
-        document.getElementById('pdfSettingsTitle').textContent = fileTitle;
-        const container = document.getElementById('pdfPagesContainer');
-        container.innerHTML = '<div class="list-group-item text-muted">Загрузка PDF...</div>';
-
-        if (!pdfSettingsModalInstance) {
-            pdfSettingsModalInstance = new bootstrap.Modal(document.getElementById('pdfSettingsModal'));
-        }
-        pdfSettingsModalInstance.show();
-
-        try {
-            const previewResponse = await fetch(`/web/file/${data.file_id}/pdf-preview`);
-            if (!previewResponse.ok) {
-                container.innerHTML = '<div class="list-group-item text-danger">Не удалось получить список страниц PDF</div>';
-                return;
-            }
-            const previewData = await previewResponse.json();
-
-            const existingDurations = {};
-            (data.pdf_page_durations || []).forEach(item => {
-                existingDurations[item.page] = item.duration;
-            });
-
-            container.innerHTML = '';
-            const totalPages = Number(previewData.page_count) || 1;
-            for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
-                const defaultDuration = existingDurations[pageNumber] || 5;
-                container.insertAdjacentHTML('beforeend', renderPdfPageRow(pageNumber, defaultDuration));
-            }
-        } catch (err) {
-            console.error('PDF settings render error', err);
-            container.innerHTML = '<div class="list-group-item text-danger">Ошибка при загрузке списка страниц PDF.</div>';
-        }
-    }
-
-    function submitPdfSettings() {
-        const rows = Array.from(document.querySelectorAll('.pdf-page-duration'));
-        const payload = [];
-        for (const row of rows) {
-            const duration = Number(row.value);
-            if (!duration || duration <= 0) {
-                alert('Длительность для каждой страницы должна быть больше 0');
-                row.focus();
-                return;
-            }
-            payload.push({
-                page: Number(row.getAttribute('data-page')),
-                duration: Math.round(duration),
-            });
-        }
-        document.getElementById('pdfPageDurationsJson').value = JSON.stringify(payload);
-        document.getElementById('pdfSettingsForm').submit();
-    }
-
-    async function detectVideoDuration(url) {
-        return new Promise((resolve) => {
-            const video = document.createElement('video');
-            video.preload = 'metadata';
-            video.src = url;
-            video.onloadedmetadata = () => {
-                const seconds = Math.ceil(video.duration || 0);
-                resolve(seconds > 0 ? seconds : null);
-            };
-            video.onerror = () => resolve(null);
-        });
     }
 </script>
 
