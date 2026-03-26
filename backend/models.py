@@ -5,7 +5,8 @@ from sqlalchemy import (
     String,
     DateTime,
     Boolean,
-    Table)
+    Table,
+    JSON)
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -67,6 +68,10 @@ class File(Base):
     description = Column(String)
     # "video" | "image" | "pdf"
     file_type = Column(String, default="video")
+
+    duration_config = Column(JSON, nullable=True)
+    meta_info = Column(JSON, nullable=True)
+
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="files")
 

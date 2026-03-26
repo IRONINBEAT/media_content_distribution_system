@@ -149,8 +149,7 @@
 
                     {% elif ftype == "image" %}
                     <img src="/web/stream/{{ file.file_id }}" class="card-img-top"
-                        style="height: 180px; object-fit: cover; cursor: zoom-in;"
-                        alt="{{ file.description }}"
+                        style="height: 180px; object-fit: cover; cursor: zoom-in;" alt="{{ file.description }}"
                         onclick="openImageViewer('/web/stream/{{ file.file_id }}', '{{ file.description or file.file_id }}')">
 
                     {% elif ftype == "pdf" %}
@@ -158,19 +157,22 @@
                         style="height: 180px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="52" height="64" viewBox="0 0 52 64" class="mb-3">
                             <!-- страница -->
-                            <rect x="1" y="1" width="40" height="52" rx="4" ry="4"
-                                fill="none" stroke="#dc3545" stroke-width="2"/>
+                            <rect x="1" y="1" width="40" height="52" rx="4" ry="4" fill="none" stroke="#dc3545"
+                                stroke-width="2" />
                             <!-- загнутый угол -->
-                            <polyline points="29,1 29,13 41,13"
-                                fill="none" stroke="#dc3545" stroke-width="2" stroke-linejoin="round"/>
+                            <polyline points="29,1 29,13 41,13" fill="none" stroke="#dc3545" stroke-width="2"
+                                stroke-linejoin="round" />
                             <!-- линии текста -->
-                            <line x1="8" y1="22" x2="33" y2="22" stroke="#dc3545" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-                            <line x1="8" y1="30" x2="33" y2="30" stroke="#dc3545" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-                            <line x1="8" y1="38" x2="24" y2="38" stroke="#dc3545" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+                            <line x1="8" y1="22" x2="33" y2="22" stroke="#dc3545" stroke-width="2"
+                                stroke-linecap="round" opacity="0.5" />
+                            <line x1="8" y1="30" x2="33" y2="30" stroke="#dc3545" stroke-width="2"
+                                stroke-linecap="round" opacity="0.5" />
+                            <line x1="8" y1="38" x2="24" y2="38" stroke="#dc3545" stroke-width="2"
+                                stroke-linecap="round" opacity="0.5" />
                             <!-- бейдж PDF -->
-                            <rect x="6" y="46" width="30" height="14" rx="3" fill="#dc3545"/>
-                            <text x="21" y="57" text-anchor="middle" fill="white"
-                                font-family="Arial, sans-serif" font-size="8" font-weight="bold">PDF</text>
+                            <rect x="6" y="46" width="30" height="14" rx="3" fill="#dc3545" />
+                            <text x="21" y="57" text-anchor="middle" fill="white" font-family="Arial, sans-serif"
+                                font-size="8" font-weight="bold">PDF</text>
                         </svg>
                         <a href="/web/stream/{{ file.file_id }}" target="_blank"
                             class="btn btn-sm btn-outline-danger">Открыть PDF</a>
@@ -181,15 +183,22 @@
                         <h6 class="card-title text-truncate" title="{{ file.description }}">
                             {{ file.description or "Без описания" }}
                             {% if ftype == "video" %}
-                            <span class="badge bg-primary ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{ ext }}</span>
+                            <span class="badge bg-primary ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{
+                                ext }}</span>
                             {% elif ftype == "image" %}
-                            <span class="badge bg-success ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{ ext }}</span>
+                            <span class="badge bg-success ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{
+                                ext }}</span>
                             {% elif ftype == "pdf" %}
-                            <span class="badge bg-danger ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{ ext }}</span>
+                            <span class="badge bg-danger ms-1" style="font-size: 0.65rem; vertical-align: middle;">{{
+                                ext }}</span>
                             {% endif %}
                         </h6>
                         <small class="text-muted d-block mb-2">ID: {{ file.file_id }}</small>
                         <div class="d-grid gap-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-bs-toggle="modal"
+                                data-bs-target="#durationModal{{ file.id }}">
+                                Длительность
+                            </button>
                             <button class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal"
                                 data-bs-target="#devicesModal{{ file.id }}">
                                 Устройства
@@ -201,6 +210,47 @@
                             </form>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="durationModal{{ file.id }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <form method="post" action="/web/file/update-duration" class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Настройка времени: {{ file.description }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="file_id" value="{{ file.id }}">
+
+                            {% if file.file_type == 'pdf' %}
+                            <p class="small text-muted">Длительность каждой страницы (сек.):</p>
+                            {% for p_dur in file.duration_config.pages %}
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">Стр. {{ loop.index }}</span>
+                                <input type="number" name="page_durations" step="0.1" class="form-control"
+                                    value="{{ p_dur }}">
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="mb-3">
+                                <label class="form-label">Длительность отображения (сек.)</label>
+                                <input type="number" name="duration" step="0.1" class="form-control"
+                                    value="{{ file.duration_config.duration }}" {% if file.file_type=='video' %}
+                                    max="{{ file.meta_info.total_duration }}" {% endif %}>
+                                {% if file.file_type == 'video' %}
+                                <small class="text-muted">
+                                    Максимум: {{ (file.meta_info.total_duration | round(2)) if (file.meta_info and
+                                    file.meta_info.total_duration) else '0' }} сек.
+                                </small>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 

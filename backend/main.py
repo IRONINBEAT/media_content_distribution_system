@@ -55,6 +55,7 @@ class CheckVideosRequest(BaseModel):
 class VideoItem(BaseModel):
     id: str = Field(..., description="Уникальный ID файла в системе")
     url: str = Field(..., description="Путь для скачивания файла")
+    duration_config: Optional[dict] = Field(None, description="Настройки длительности (JSON)")
 
 
 class CheckVideosResponse(BaseModel):
@@ -451,7 +452,8 @@ def check_videos(data: CheckVideosRequest,
 
             videos_data.append({
                 "id": f.file_id,
-                "url": direct_download_url
+                "url": direct_download_url,
+                "duration_config": f.duration_config
             })
 
         return {
@@ -460,56 +462,3 @@ def check_videos(data: CheckVideosRequest,
             "message": "Reset Content",
             "videos": videos_data
         }
-
-
-# @app.get(
-#     "/api/download/{file_id}",
-#     summary="Скачивание файла",
-#     tags=["Content"],
-# )
-# def download_file(
-#     file_id: str,
-#     token: str,
-#     id: str,  # noqa: A002
-#     db: Session = Depends(get_db),
-# ):
-#     """
-#     Загрузка медиафайла.
-
-#     Возвращает бинарный поток файла (application/octet-stream).
-#     Требует передачи ID файла, токена и ID устройства.
-#     """
-#     user = db.query(User).filter(User.token == token).first()
-#     if not user:
-#         raise HTTPException(status_code=403, detail="Invalid token")
-
-#     device = (
-#         db.query(Device)
-#         .filter(Device.device_id == id, Device.user_id == user.id)
-#         .first()
-#     )
-
-#     if not device:
-#         raise HTTPException(status_code=403, detail="Unknown device")
-
-#     if device.status != "active":
-#         raise HTTPException(status_code=403, detail="Device not active")
-
-#     file_obj = (
-#         db.query(File)
-#         .filter(File.file_id == file_id, File.user_id == user.id)
-#         .first()
-#     )
-
-#     if not file_obj:
-#         raise HTTPException(status_code=404, detail="File not found")
-
-#     file_path = file_obj.url
-#     if not os.path.exists(file_path):
-#         raise HTTPException(status_code=500, detail="File missing on server")
-
-#     return FileResponse(
-#         path=file_path,
-#         media_type="application/octet-stream",
-#         filename=os.path.basename(file_path),
-#     )

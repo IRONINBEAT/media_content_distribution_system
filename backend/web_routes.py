@@ -4,9 +4,16 @@ import uuid
 import zlib
 import time
 import secrets
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from passlib.context import CryptContext
+try:
+    from PyPDF2 import PdfReader
+    from moviepy import VideoFileClip  # В 2.x импортируем напрямую
+except ImportError:
+    PdfReader = None
+    VideoFileClip = None
+    print("Внимание: Библиотеки для анализа медиафайлов не найдены.")
 
 from fastapi import (
     APIRouter,
@@ -193,11 +200,29 @@ def web_upload_file(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    duration_cfg = {}
+    meta = {}
+
+    if file_type == "image":
+        duration_cfg = {"duration": 5}
+    elif file_type == "video" and VideoFileClip:
+        with VideoFileClip(file_path) as clip:
+            duration = clip.duration
+            meta = {"total_duration": duration}
+            duration_cfg = {"duration": duration}
+    elif file_type == "pdf" and PdfReader:
+        reader = PdfReader(file_path)
+        pages = len(reader.pages)
+        meta = {"page_count": pages}
+        duration_cfg = {"pages": [10] * pages}
+
     db_file = File(
         file_id=file_id,
         url=file_path,
         description=description,
         file_type=file_type,
+        duration_config=duration_cfg,
+        meta_info=meta,
         user_id=user.id,
     )
     db.add(db_file)
@@ -445,4 +470,31 @@ def update_file_devices(
     file_obj.devices = devices_to_assign
     db.commit()
 
+    return RedirectResponse(url="/web/dashboard", status_code=303)
+
+
+@router.post("/web/file/update-duration")
+def update_file_duration(
+    file_id: int = Form(...),
+    duration: Optional[float] = Form(None),
+    page_durations: List[float] = Form(None),
+    user: User = Depends(get_current_web_user),
+    db: Session = Depends(get_db),
+):
+    file_obj = db.query(File).filter(File.id == file_id, File.user_id == user.id).first()
+    if not file_obj:
+        raise HTTPException(status_code=404)
+
+    if file_obj.file_type == "pdf":
+        # Обновляем список для страниц
+        file_obj.duration_config = {"pages": page_durations}
+    else:
+        # Валидация для видео: не больше оригинала
+        if file_obj.file_type == "video":
+            max_dur = file_obj.meta_info.get("total_duration", 0)
+            if duration > max_dur:
+                duration = max_dur
+        file_obj.duration_config = {"duration": duration}
+
+    db.commit()
     return RedirectResponse(url="/web/dashboard", status_code=303)
