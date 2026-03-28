@@ -51,6 +51,8 @@ class Device(Base):
     token_synced = Column(Boolean, default=True)
     last_heartbeat = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
+    broadcast_start_time = Column(String(5), nullable=True)
+    broadcast_end_time = Column(String(5), nullable=True)
 
     files = relationship(
         "File",

@@ -59,6 +59,7 @@
                     <tr>
                         <th>ID устройства</th>
                         <th>Статус</th>
+                        <th>Расписание</th>
                         <th>Действия</th>
                     </tr>
                 </thead>
@@ -87,8 +88,29 @@
                                 {% endif %}
                                 {% endif %}
                         </td>
+                        <td>
+                            {% if dev.broadcast_start_time and dev.broadcast_end_time %}
+                            <span class="badge bg-info text-dark">
+                                {{ dev.broadcast_start_time }} - {{ dev.broadcast_end_time }}
+                            </span>
+                            {% elif dev.broadcast_start_time %}
+                            <span class="badge bg-info text-dark">
+                                с {{ dev.broadcast_start_time }}
+                            </span>
+                            {% elif dev.broadcast_end_time %}
+                            <span class="badge bg-info text-dark">
+                                до {{ dev.broadcast_end_time }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">Не задано</span>
+                            {% endif %}
+                        </td>
                         <td class="text-nowrap">
                             <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                                    data-bs-target="#scheduleModal{{ dev.id }}">
+                                    Расписание
+                                </button>
 
                                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                     data-bs-target="#playlistModal{{ dev.id }}">
@@ -239,10 +261,8 @@
                                     value="{{ file.duration_config.duration }}" {% if file.file_type=='video' %}
                                     max="{{ file.meta_info.total_duration }}" {% endif %}>
                                 {% if file.file_type == 'video' %}
-                                <small class="text-muted">
-                                    Максимум: {{ (file.meta_info.total_duration | round(2)) if (file.meta_info and
-                                    file.meta_info.total_duration) else '0' }} сек.
-                                </small>
+                                <small class="text-muted">Максимум: {{ file.meta_info.total_duration|round(2) }}
+                                    сек.</small>
                                 {% endif %}
                             </div>
                             {% endif %}
@@ -302,6 +322,44 @@
 </div>
 
 {% for dev in devices %}
+<div class="modal fade" id="scheduleModal{{ dev.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" action="/web/device/update-schedule" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Расписание вещания: {{ dev.device_id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="device_id" value="{{ dev.id }}">
+                <p class="text-muted small mb-3">
+                    Укажите локальное время включения и выключения устройства. Поля можно оставить пустыми, если
+                    ограничение не нужно.
+                </p>
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Время начала</label>
+                        <input type="time" name="broadcast_start_time" class="form-control"
+                            value="{{ dev.broadcast_start_time or '' }}">
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Время окончания</label>
+                        <input type="time" name="broadcast_end_time" class="form-control"
+                            value="{{ dev.broadcast_end_time or '' }}">
+                    </div>
+                </div>
+                <div class="form-text mt-3">
+                    Пример: 08:00 - 22:00. Если заполнено только одно поле, оно будет сохранено как одностороннее
+                    ограничение.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить расписание</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="playlistModal{{ dev.id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form method="post" action="/web/device/update-playlist" class="modal-content bg-white text-dark shadow">

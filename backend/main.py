@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import get_db, ensure_device_schedule_columns
 from models import Device, File, User
 from web_routes import router as web_router
 
@@ -28,6 +28,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app = FastAPI(title="Media-Content Distribution System API")
 
 app.include_router(web_router, include_in_schema=False)
+
+ensure_device_schedule_columns()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -63,6 +65,7 @@ class CheckVideosResponse(BaseModel):
     status: int    # Добавляем поле статуса (204, 205 и т.д.)
     message: str
     videos: Optional[List[dict]] = None
+    schedule: Optional[dict] = None
 
 
 class VideoResponse(BaseModel):
@@ -441,7 +444,11 @@ def check_videos(data: CheckVideosRequest,
         return {"answer": True,
                 "status": 204,
                 "message": "No Content",
-                "videos": []}
+                "videos": [],
+                "schedule": {
+                    "start_time": device.broadcast_start_time,
+                    "end_time": device.broadcast_end_time,
+                }}
     else:
         videos_data = []
 
@@ -460,5 +467,9 @@ def check_videos(data: CheckVideosRequest,
             "answer": True,
             "status": 205,
             "message": "Reset Content",
-            "videos": videos_data
+            "videos": videos_data,
+            "schedule": {
+                "start_time": device.broadcast_start_time,
+                "end_time": device.broadcast_end_time,
+            },
         }

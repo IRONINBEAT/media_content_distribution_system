@@ -24,7 +24,9 @@ user = User(
 device = Device(
     device_id="NSTU_OrangePI2302",
     status="active",
-    user=user
+    user=user,
+    broadcast_start_time="08:00",
+    broadcast_end_time="22:00",
 )
 
 # 3. Создаем файлы с начальными настройками длительности

@@ -6,6 +6,7 @@ import time
 import secrets
 from typing import List, Optional
 from datetime import datetime
+from re import fullmatch
 from passlib.context import CryptContext
 try:
     from PyPDF2 import PdfReader
@@ -57,6 +58,23 @@ def get_file_meta(filename: str):
             detail=f"Недопустимый тип файла. Разрешены: {', '.join(ALLOWED_EXTENSIONS)}"
         )
     return ALLOWED_EXTENSIONS[ext]
+
+
+def normalize_schedule_time(value: Optional[str], field_label: str) -> Optional[str]:
+    if value is None:
+        return None
+
+    normalized = value.strip()
+    if not normalized:
+        return None
+
+    if not fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", normalized):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_label} должно быть в формате HH:MM",
+        )
+
+    return normalized
 
 
 # ============== Helpful Functions ==============
@@ -177,6 +195,41 @@ def device_action(
         elif action == "delete":
             db.delete(device)
         db.commit()
+
+    return RedirectResponse(url="/web/dashboard", status_code=303)
+
+
+@router.post("/web/device/update-schedule")
+def update_device_schedule(
+    device_id: int = Form(...),
+    broadcast_start_time: Optional[str] = Form(None),
+    broadcast_end_time: Optional[str] = Form(None),
+    user: User = Depends(get_current_web_user),
+    db: Session = Depends(get_db),
+):
+    if not user:
+        return RedirectResponse(url="/web/login", status_code=303)
+
+    require_role(user, ["admin", "operator"])
+
+    device = (
+        db.query(Device)
+        .filter(Device.id == device_id, Device.user_id == user.id)
+        .first()
+    )
+    if not device:
+        raise HTTPException(status_code=404, detail="Устройство не найдено")
+
+    device.broadcast_start_time = normalize_schedule_time(
+        broadcast_start_time,
+        "Время начала вещания",
+    )
+    device.broadcast_end_time = normalize_schedule_time(
+        broadcast_end_time,
+        "Время окончания вещания",
+    )
+
+    db.commit()
 
     return RedirectResponse(url="/web/dashboard", status_code=303)
 
